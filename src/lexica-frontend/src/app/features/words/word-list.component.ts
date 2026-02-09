@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, WordDto } from '../../core/services/api.service';
+import { WordItemComponent } from '../../shared/components/word-item.component';
 
 @Component({
   selector: 'app-word-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -30,16 +31,19 @@ import { ApiService, WordDto } from '../../core/services/api.service';
         />
       </div>
 
+      <div class="sort-bar">
+        <span class="sort-label">Sorteer:</span>
+        <button class="sort-btn" [class.active]="sortBy === 'number'" (click)="toggleSort('number')">
+          Nr <i class="fa-solid" [class.fa-sort-up]="sortBy === 'number' && sortDir === 'asc'" [class.fa-sort-down]="sortBy === 'number' && sortDir === 'desc'" [class.fa-sort]="sortBy !== 'number'"></i>
+        </button>
+        <button class="sort-btn" [class.active]="sortBy === 'stars'" (click)="toggleSort('stars')">
+          <i class="fa-solid fa-star"></i> <i class="fa-solid" [class.fa-sort-up]="sortBy === 'stars' && sortDir === 'asc'" [class.fa-sort-down]="sortBy === 'stars' && sortDir === 'desc'" [class.fa-sort]="sortBy !== 'stars'"></i>
+        </button>
+      </div>
+
       <div class="word-list">
         @for (word of filteredWords; track word.id) {
-          <a [routerLink]="['/words', word.id]" class="word-item">
-            <div class="word-number">{{ word.number }}</div>
-            <div class="word-content">
-              <span class="word-term">{{ word.term }}</span>
-              <span class="word-translation">{{ word.translation }}</span>
-            </div>
-            <span class="word-lang"><i class="fa-solid" [class.fa-landmark]="word.language === 'Latin'" [class.fa-scroll]="word.language !== 'Latin'"></i></span>
-          </a>
+          <app-word-item [word]="word"></app-word-item>
         } @empty {
           <div class="empty-state">
             <p>Nog geen woorden.</p>
@@ -90,38 +94,20 @@ import { ApiService, WordDto } from '../../core/services/api.service';
 
     .word-list { padding: 0 1rem 1rem; }
 
-    .word-item {
-      display: flex;
-      align-items: center;
-      background: white;
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-      margin-bottom: 0.5rem;
-      text-decoration: none;
-      color: inherit;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      transition: transform 0.15s;
-
-      &:hover { transform: translateX(4px); }
+    .sort-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0 1rem 0.5rem;
     }
 
-    .word-number {
-      width: 3rem;
-      font-weight: 700;
-      color: #0f3460;
-      font-size: 0.85rem;
-    }
+    .sort-label { font-size: 0.8rem; color: #888; }
 
-    .word-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
+    .sort-btn {
+      background: white; border: 1.5px solid #e0e0e0; border-radius: 6px;
+      padding: 0.35rem 0.6rem; font-size: 0.8rem; color: #666;
+      cursor: pointer; display: flex; align-items: center; gap: 0.3rem;
+      &:hover { border-color: #0f3460; color: #0f3460; }
+      &.active { border-color: #0f3460; color: #0f3460; background: #f0f4ff; font-weight: 600; }
     }
-
-    .word-term { font-weight: 600; color: #1a1a2e; }
-    .word-translation { font-size: 0.85rem; color: #666; }
-    .word-lang { font-size: 1.2rem; }
 
     .empty-state {
       text-align: center;
@@ -143,10 +129,18 @@ export class WordListComponent implements OnInit {
   filteredWords: WordDto[] = [];
   languageFilter = '';
   searchQuery = '';
+  sortBy: 'number' | 'stars' = 'number';
+  sortDir: 'asc' | 'desc' = 'asc';
 
   constructor(private api: ApiService) {}
 
   ngOnInit() {
+    const saved = sessionStorage.getItem('wordlist_sort');
+    if (saved) {
+      const { sortBy, sortDir } = JSON.parse(saved);
+      this.sortBy = sortBy;
+      this.sortDir = sortDir;
+    }
     this.loadWords();
   }
 
@@ -159,8 +153,37 @@ export class WordListComponent implements OnInit {
 
   filterWords() {
     const q = this.searchQuery.toLowerCase();
-    this.filteredWords = this.words.filter(w =>
+    let result = this.words.filter(w =>
       !q || w.term.toLowerCase().includes(q) || w.translation.toLowerCase().includes(q) || w.number.toString().includes(q)
     );
+
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    if (this.sortBy === 'stars') {
+      result.sort((a, b) => (this.getStars(a) - this.getStars(b)) * dir);
+    } else {
+      result.sort((a, b) => (a.number - b.number) * dir);
+    }
+
+    this.filteredWords = result;
+  }
+
+  toggleSort(by: 'number' | 'stars') {
+    if (this.sortBy === by) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortBy = by;
+      this.sortDir = by === 'stars' ? 'desc' : 'asc';
+    }
+    sessionStorage.setItem('wordlist_sort', JSON.stringify({ sortBy: this.sortBy, sortDir: this.sortDir }));
+    this.filterWords();
+  }
+
+  getStars(word: WordDto): number {
+    if (word.repetitions === 0) return 0;
+    if (word.repetitions <= 1) return 1;
+    if (word.repetitions <= 3) return 2;
+    if (word.repetitions <= 5) return 3;
+    if (word.repetitions > 5 && word.interval > 21 && word.easiness > 2.3) return 5;
+    return 4;
   }
 }

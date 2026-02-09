@@ -84,6 +84,10 @@ export class ApiService {
   getStats(): Observable<UserStatsDto> {
     return this.http.get<UserStatsDto>(`${this.baseUrl}/stats`);
   }
+
+  getWeeklyStats(): Observable<WeeklyStatsDto> {
+    return this.http.get<WeeklyStatsDto>(`${this.baseUrl}/stats/weekly`);
+  }
 }
 
 // Interfaces
@@ -132,6 +136,8 @@ export interface GroupDto {
   language: string;
   defaultDirection: string;
   wordCount: number;
+  masteredWordCount: number;
+  inProgressWordCount: number;
   createdAt: string;
 }
 
@@ -163,6 +169,7 @@ export interface UserStatsDto {
   streakFreezeAvailable: boolean;
   totalWords: number;
   masteredWords: number;
+  inProgressWords: number;
   dueToday: number;
   achievements: AchievementDto[];
 }
@@ -171,4 +178,17 @@ export interface AchievementDto {
   type: string;
   title: string;
   unlockedAt: string;
+}
+
+export interface DayStatsDto {
+  date: string;
+  totalReviews: number;
+  known: number;
+  easy: number;
+  unknown: number;
+}
+
+export interface WeeklyStatsDto {
+  days: DayStatsDto[];
+  currentStreak: number;
 }

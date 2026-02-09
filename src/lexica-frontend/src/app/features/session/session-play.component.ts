@@ -1,5 +1,6 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
@@ -16,7 +17,7 @@ interface SessionWord {
 @Component({
   selector: 'app-session-play',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   template: `
     @if (completed) {
       <div class="completed-screen">
@@ -89,6 +90,9 @@ interface SessionWord {
                   <span class="card-notes">{{ currentWord.notes }}</span>
                 }
               </div>
+              <button class="note-icon-btn" (click)="openNoteModal($event)" title="Notitie toevoegen">
+                <i class="fa-solid" [class.fa-pen-to-square]="currentWord.notes" [class.fa-note-sticky]="!currentWord.notes"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -99,17 +103,34 @@ interface SessionWord {
               <span class="btn-icon"><i class="fa-solid fa-xmark"></i></span>
               <span>Niet gekend</span>
             </button>
-            <button class="action-btn known" (click)="answer('Known')">
-              <span class="btn-icon"><i class="fa-solid fa-check"></i></span>
-              <span>Gekend</span>
-            </button>
             <button class="action-btn easy" (click)="answer('Easy')">
               <span class="btn-icon"><i class="fa-solid fa-star"></i></span>
               <span>Moeiteloos</span>
             </button>
+            <button class="action-btn known" (click)="answer('Known')">
+              <span class="btn-icon"><i class="fa-solid fa-check"></i></span>
+              <span>Gekend</span>
+            </button>
           </div>
         }
       </div>
+
+    @if (noteModalOpen && currentWord) {
+      <div class="modal-overlay" (click)="closeNoteModal()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <h3>Notitie</h3>
+          <textarea
+            [(ngModel)]="noteText"
+            placeholder="Voeg een notitie toe..."
+            rows="4"
+          ></textarea>
+          <div class="modal-actions">
+            <button class="modal-btn cancel" (click)="closeNoteModal()">Annuleer</button>
+            <button class="modal-btn save" (click)="saveNote()">Bewaren</button>
+          </div>
+        </div>
+      </div>
+    }
     } @else {
       <div class="loading">Sessie laden...</div>
     }
@@ -179,7 +200,7 @@ interface SessionWord {
     }
 
     .card-front { background: white; }
-    .card-back { background: #f0f4ff; transform: rotateY(180deg); }
+    .card-back { background: #f0f4ff; transform: rotateY(180deg); position: relative; }
 
     .card-content {
       text-align: center;
@@ -201,8 +222,80 @@ interface SessionWord {
 
     .card-text { font-size: 1.75rem; font-weight: 700; color: #1a1a2e; }
     .card-meta { font-size: 0.9rem; color: #666; font-style: italic; }
-    .card-notes { font-size: 0.85rem; color: #888; }
+    .card-notes { font-size: 0.8rem; color: #888; margin-top: auto; padding-top: 0.5rem; }
     .tap-hint { font-size: 0.75rem; color: #ccc; margin-top: 1rem; }
+
+    .note-icon-btn {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.08);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #666;
+      font-size: 0.85rem;
+      transition: background 0.2s, color 0.2s;
+      transform: rotateY(180deg);
+      &:hover { background: rgba(0,0,0,0.15); color: #333; }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1.5rem;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 360px;
+
+      h3 { margin: 0 0 1rem; font-size: 1.1rem; color: #1a1a2e; }
+
+      textarea {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 0.75rem;
+        font-size: 0.95rem;
+        font-family: inherit;
+        resize: vertical;
+        box-sizing: border-box;
+        &:focus { outline: none; border-color: #0f3460; }
+      }
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .modal-btn.cancel { background: #e0e0e0; color: #333; }
+    .modal-btn.save { background: #0f3460; color: white; }
 
     .action-buttons {
       display: flex;
@@ -335,6 +428,10 @@ export class SessionPlayComponent implements OnInit {
   easyCount = 0;
   totalXp = 0;
   firstAttempts = new Map<string, string>(); // wordId -> first result
+
+  // Notes modal
+  noteModalOpen = false;
+  noteText = '';
 
   // Touch
   private startX = 0;
@@ -509,12 +606,48 @@ export class SessionPlayComponent implements OnInit {
     }
   }
 
+  openNoteModal(event: Event) {
+    event.stopPropagation();
+    if (!this.currentWord) return;
+    this.noteText = this.currentWord.notes || '';
+    this.noteModalOpen = true;
+  }
+
+  closeNoteModal() {
+    this.noteModalOpen = false;
+  }
+
+  saveNote() {
+    if (!this.currentWord) return;
+    const wordId = this.currentWord.wordId;
+    const notes = this.noteText.trim() || undefined;
+
+    this.http.put<any>(`${environment.apiUrl}/words/${wordId}`, { notes: notes ?? '' }).subscribe({
+      next: () => {
+        if (this.currentWord && this.currentWord.wordId === wordId) {
+          this.currentWord.notes = notes;
+        }
+        // Also update in the stack for paused sessions
+        const inStack = this.stack.find(w => w.wordId === wordId);
+        if (inStack) inStack.notes = notes;
+      }
+    });
+
+    this.noteModalOpen = false;
+  }
+
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
-      this.pauseSession();
+      if (this.noteModalOpen) {
+        this.closeNoteModal();
+      } else {
+        this.pauseSession();
+      }
       return;
     }
+
+    if (this.noteModalOpen) return;
 
     if (!this.currentWord) return;
 

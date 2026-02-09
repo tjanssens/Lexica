@@ -62,14 +62,46 @@ import { ApiService, WordDto } from '../../core/services/api.service';
 
           @if (!isNew) {
             <div class="sm2-info">
-              <h3>SM-2 Voortgang</h3>
+              <h3>SM-2 Voortgang <button type="button" class="info-btn" (click)="showSm2Modal = true"><i class="fa-solid fa-circle-info"></i></button></h3>
               <div class="sm2-grid">
                 <div><span class="label">Easiness:</span> {{ word.easiness.toFixed(2) }}</div>
-                <div><span class="label">Interval:</span> {{ word.interval }} dagen</div>
-                <div><span class="label">Herhalingen:</span> {{ word.repetitions }}</div>
+                <div><span class="label">Interval:</span> {{ word.interval }} {{ word.interval === 1 ? 'dag' : 'dagen' }}</div>
+                <div><span class="label">Correct op rij:</span> {{ word.repetitions }}</div>
                 <div><span class="label">Due:</span> {{ word.dueDate | date:'d MMM yyyy' }}</div>
               </div>
             </div>
+
+            @if (showSm2Modal) {
+              <div class="modal-backdrop" (click)="showSm2Modal = false">
+                <div class="modal" (click)="$event.stopPropagation()">
+                  <div class="modal-header">
+                    <h3>SM-2 Algoritme</h3>
+                    <button type="button" class="modal-close" (click)="showSm2Modal = false"><i class="fa-solid fa-xmark"></i></button>
+                  </div>
+                  <div class="modal-body">
+                    <p>SM-2 (SuperMemo 2) is een spaced repetition algoritme dat bepaalt wanneer je een woord opnieuw moet oefenen. Hoe beter je een woord kent, hoe langer het interval tot de volgende herhaling.</p>
+
+                    <h4>Parameters</h4>
+                    <dl>
+                      <dt>Easiness (E-Factor)</dt>
+                      <dd>Geeft aan hoe makkelijk je dit woord vindt. Start op 2.5 en daalt bij fouten. Hoe hoger, hoe sneller het interval groeit. Minimum: 1.3.</dd>
+
+                      <dt>Interval</dt>
+                      <dd>Het aantal dagen tot de volgende herhaling. Groeit exponentieel bij correcte antwoorden: 1 dag, 6 dagen, daarna interval x easiness.</dd>
+
+                      <dt>Correct op rij</dt>
+                      <dd>Het aantal opeenvolgende correcte antwoorden. Bij een fout wordt dit gereset naar 0.</dd>
+
+                      <dt>Due (vervaldatum)</dt>
+                      <dd>De datum waarop dit woord opnieuw geoefend moet worden. Woorden die "due" zijn verschijnen in je studiesessie.</dd>
+                    </dl>
+
+                    <h4>Wanneer is een woord "gekend"?</h4>
+                    <p>Een woord telt als gemeesterd wanneer: correct op rij &gt; 5, easiness &gt; 2.3 en interval &gt; 21 dagen.</p>
+                  </div>
+                </div>
+              </div>
+            }
           }
 
           @if (error) {
@@ -143,7 +175,48 @@ import { ApiService, WordDto } from '../../core/services/api.service';
       padding: 1rem;
       margin-bottom: 1.25rem;
 
-      h3 { font-size: 0.9rem; margin: 0 0 0.75rem; color: #333; }
+      h3 { font-size: 0.9rem; margin: 0 0 0.75rem; color: #333; display: flex; align-items: center; gap: 0.5rem; }
+    }
+
+    .info-btn {
+      background: none; border: none; color: #0f3460; cursor: pointer;
+      font-size: 1rem; padding: 0; line-height: 1;
+      &:hover { color: #f59e0b; }
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 1rem;
+    }
+
+    .modal {
+      background: white; border-radius: 14px; max-width: 450px; width: 100%;
+      max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; border-bottom: 1px solid #eee;
+      h3 { margin: 0; font-size: 1rem; color: #1a1a2e; }
+    }
+
+    .modal-close {
+      background: none; border: none; font-size: 1.25rem; color: #888;
+      cursor: pointer; padding: 0.25rem;
+      &:hover { color: #333; }
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      font-size: 0.85rem; color: #444; line-height: 1.5;
+
+      p { margin: 0 0 1rem; }
+      h4 { margin: 0 0 0.5rem; color: #1a1a2e; font-size: 0.9rem; }
+
+      dl { margin: 0 0 1rem; }
+      dt { font-weight: 600; color: #333; margin-top: 0.5rem; }
+      dd { margin: 0.15rem 0 0 0; color: #555; }
     }
 
     .sm2-grid {
@@ -185,6 +258,7 @@ export class WordDetailComponent implements OnInit {
   isNew = false;
   saving = false;
   error = '';
+  showSm2Modal = false;
 
   constructor(
     private api: ApiService,

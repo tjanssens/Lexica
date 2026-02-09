@@ -25,7 +25,15 @@
       "Bash(curl:*)",
       "Bash(netstat:*)",
       "Bash(npx ng build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(findstr:*)",
+      "Bash(ipconfig:*)",
+      "Bash(npm run start:lan:*)",
+      "Bash(netsh advfirewall firewall add rule:*)",
+      "Bash(netsh advfirewall firewall show rule:*)",
+      "Bash(git status:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -137,7 +137,7 @@ import { ApiService, GroupDto } from '../../core/services/api.service';
 export class SessionStartComponent implements OnInit {
   groups: GroupDto[] = [];
   selectedGroupIds = new Set<string>();
-  direction = 'NlToTarget';
+  direction = 'TargetToNl';
   sessionSize = 20;
   loading = false;
 
@@ -147,6 +147,12 @@ export class SessionStartComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    const saved = localStorage.getItem('session_prefs');
+    if (saved) {
+      const prefs = JSON.parse(saved);
+      this.direction = prefs.direction ?? this.direction;
+      this.sessionSize = prefs.sessionSize ?? this.sessionSize;
+    }
     this.api.getGroups().subscribe(g => this.groups = g);
   }
 
@@ -158,6 +164,11 @@ export class SessionStartComponent implements OnInit {
   startSession() {
     this.loading = true;
     const groupIds = Array.from(this.selectedGroupIds);
+
+    localStorage.setItem('session_prefs', JSON.stringify({
+      direction: this.direction,
+      sessionSize: this.sessionSize
+    }));
 
     // Store session config and navigate to play
     sessionStorage.setItem('session_config', JSON.stringify({

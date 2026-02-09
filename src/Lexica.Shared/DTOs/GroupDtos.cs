@@ -6,6 +6,8 @@ public record GroupDto(
     string Language,
     string DefaultDirection,
     int WordCount,
+    int MasteredWordCount,
+    int InProgressWordCount,
     DateTime CreatedAt
 );
 

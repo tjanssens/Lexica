@@ -2,12 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { ApiService, GroupDto, UserStatsDto } from '../../core/services/api.service';
+import { ApiService, DayStatsDto, GroupDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
+import { GroupItemComponent } from '../../shared/components/group-item.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, GroupItemComponent],
   template: `
     <div class="home-container">
       <header class="home-header">
@@ -65,10 +66,40 @@ import { ApiService, GroupDto, UserStatsDto } from '../../core/services/api.serv
             <span class="stat-label">XP</span>
           </div>
           <div class="stat-card">
-            <span class="stat-value">{{ groups.length }}</span>
-            <span class="stat-label">Groepen</span>
+            <span class="stat-value">{{ stats?.inProgressWords ?? 0 }}</span>
+            <span class="stat-label">Bezig</span>
           </div>
         </section>
+
+        @if (weeklyStats) {
+          <section class="weekly-overview">
+            <h2>Deze week</h2>
+            <div class="week-chart">
+              @for (day of weeklyStats.days; track day.date) {
+                <div class="day-col">
+                  <div class="bar-container">
+                    @if (day.totalReviews > 0) {
+                      <div class="stacked-bar" [style.height.%]="barHeight(day)">
+                        <div class="seg-easy" [style.flex-grow]="day.easy"></div>
+                        <div class="seg-known" [style.flex-grow]="day.known"></div>
+                        <div class="seg-unknown" [style.flex-grow]="day.unknown"></div>
+                      </div>
+                    } @else {
+                      <div class="bar-empty"></div>
+                    }
+                  </div>
+                  <span class="day-label">{{ dayLabel(day) }}</span>
+                  <span class="day-count">{{ day.totalReviews || '' }}</span>
+                </div>
+              }
+            </div>
+            <div class="week-legend">
+              <span class="legend-item"><span class="dot dot-easy"></span> Makkelijk</span>
+              <span class="legend-item"><span class="dot dot-known"></span> Gekend</span>
+              <span class="legend-item"><span class="dot dot-unknown"></span> Fout</span>
+            </div>
+          </section>
+        }
 
         <section class="actions">
           <h2>Aan de slag</h2>
@@ -100,16 +131,7 @@ import { ApiService, GroupDto, UserStatsDto } from '../../core/services/api.serv
           <section class="groups-overview">
             <h2>Jouw groepen</h2>
             @for (group of groups; track group.id) {
-              <a [routerLink]="['/groups', group.id]" class="group-item">
-                <div class="group-info">
-                  <span class="group-lang"><i class="fa-solid" [class.fa-landmark]="group.language === 'Latin'" [class.fa-scroll]="group.language !== 'Latin'"></i></span>
-                  <div>
-                    <strong>{{ group.name }}</strong>
-                    <span class="word-count">{{ group.wordCount }} woorden</span>
-                  </div>
-                </div>
-                <span class="arrow"><i class="fa-solid fa-chevron-right"></i></span>
-              </a>
+              <app-group-item [group]="group"></app-group-item>
             }
           </section>
         }
@@ -211,26 +233,61 @@ import { ApiService, GroupDto, UserStatsDto } from '../../core/services/api.serv
     .action-title { font-weight: 600; color: #1a1a2e; font-size: 0.9rem; }
     .action-desc { color: #888; font-size: 0.75rem; }
 
-    .groups-overview { }
-
-    .group-item {
-      display: flex; align-items: center; justify-content: space-between;
-      background: white; border-radius: 12px; padding: 1rem 1.25rem;
-      margin-bottom: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      text-decoration: none; color: inherit;
-      &:hover { transform: translateX(2px); }
+    .weekly-overview {
+      background: white; border-radius: 12px; padding: 1.25rem;
+      margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
-    .group-info { display: flex; align-items: center; gap: 0.75rem; }
-    .group-lang { font-size: 1.5rem; }
-    .word-count { display: block; color: #888; font-size: 0.8rem; }
-    .arrow { font-size: 1.5rem; color: #ccc; }
+    .week-chart {
+      display: flex; gap: 0.5rem; align-items: flex-end; height: 120px;
+      margin-bottom: 0.75rem;
+    }
+
+    .day-col {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+    }
+
+    .bar-container {
+      width: 100%; height: 90px; display: flex; align-items: flex-end; justify-content: center;
+    }
+
+    .stacked-bar {
+      width: 70%; min-height: 4px; border-radius: 4px 4px 0 0;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .seg-easy { background: #4caf50; min-height: 0; }
+    .seg-known { background: #f59e0b; min-height: 0; }
+    .seg-unknown { background: #f44336; min-height: 0; }
+
+    .bar-empty {
+      width: 70%; height: 4px; border-radius: 2px; background: #e8e8e8;
+    }
+
+    .day-label { font-size: 0.7rem; color: #888; }
+    .day-count { font-size: 0.7rem; font-weight: 600; color: #0f3460; min-height: 0.9rem; }
+
+    .week-legend {
+      display: flex; justify-content: center; gap: 1rem;
+    }
+
+    .legend-item { font-size: 0.7rem; color: #888; display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot-easy { background: #4caf50; }
+    .dot-known { background: #f59e0b; }
+    .dot-unknown { background: #f44336; }
+
+    .groups-overview { }
   `]
 })
 export class HomeComponent implements OnInit {
   groups: GroupDto[] = [];
   stats: UserStatsDto | null = null;
+  weeklyStats: WeeklyStatsDto | null = null;
   pausedSession: { remaining: number; totalWords: number } | null = null;
+
+  private maxReviews = 1;
+  private dayNames = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
   constructor(
     public auth: AuthService,
@@ -240,6 +297,10 @@ export class HomeComponent implements OnInit {
   ngOnInit() {
     this.api.getGroups().subscribe(groups => this.groups = groups);
     this.api.getStats().subscribe(stats => this.stats = stats);
+    this.api.getWeeklyStats().subscribe(ws => {
+      this.weeklyStats = ws;
+      this.maxReviews = Math.max(1, ...ws.days.map(d => d.totalReviews));
+    });
 
     const pausedStr = sessionStorage.getItem('session_paused');
     if (pausedStr) {
@@ -249,6 +310,15 @@ export class HomeComponent implements OnInit {
         totalWords: paused.totalWords
       };
     }
+  }
+
+  barHeight(day: DayStatsDto): number {
+    return (day.totalReviews / this.maxReviews) * 100;
+  }
+
+  dayLabel(day: DayStatsDto): string {
+    const d = new Date(day.date);
+    return this.dayNames[d.getDay()];
   }
 
   logout() {

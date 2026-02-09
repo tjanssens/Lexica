@@ -26,6 +26,8 @@ public class StatsController(AppDbContext db) : ControllerBase
         var totalWords = await db.Words.CountAsync(w => w.UserId == UserId);
         var masteredWords = await db.Words.CountAsync(w =>
             w.UserId == UserId && w.Repetitions > 5 && w.Easiness > 2.3 && w.Interval > 21);
+        var inProgressWords = await db.Words.CountAsync(w =>
+            w.UserId == UserId && w.Repetitions > 0 && !(w.Repetitions > 5 && w.Easiness > 2.3 && w.Interval > 21));
         var dueToday = await db.Words.CountAsync(w =>
             w.UserId == UserId && w.DueDate <= today);
 
@@ -45,6 +47,7 @@ public class StatsController(AppDbContext db) : ControllerBase
             user.StreakFreezeAvailable,
             totalWords,
             masteredWords,
+            inProgressWords,
             dueToday,
             achievements
         ));
@@ -73,6 +76,46 @@ public class StatsController(AppDbContext db) : ControllerBase
         };
 
         return (title, xpPerLevel);
+    }
+
+    [HttpGet("weekly")]
+    public async Task<ActionResult<WeeklyStatsDto>> GetWeeklyStats()
+    {
+        var user = await db.Users.FindAsync(UserId);
+        if (user == null) return NotFound();
+
+        var today = DateTime.UtcNow.Date;
+        var weekAgo = today.AddDays(-6);
+
+        var logs = await db.ReviewLogs
+            .Where(r => r.Word.UserId == UserId && r.ReviewedAt >= weekAgo)
+            .Select(r => new { r.ReviewedAt.Date, r.Result })
+            .ToListAsync();
+
+        var grouped = logs
+            .GroupBy(r => r.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var days = new List<DayStatsDto>();
+        for (var d = weekAgo; d <= today; d = d.AddDays(1))
+        {
+            if (grouped.TryGetValue(d, out var dayLogs))
+            {
+                days.Add(new DayStatsDto(
+                    d,
+                    dayLogs.Count,
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Known),
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Easy),
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Unknown)
+                ));
+            }
+            else
+            {
+                days.Add(new DayStatsDto(d, 0, 0, 0, 0));
+            }
+        }
+
+        return Ok(new WeeklyStatsDto(days, user.Streak));
     }
 
     private static string GetAchievementTitle(string type) => type switch
