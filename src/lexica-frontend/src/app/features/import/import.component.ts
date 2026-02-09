@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-import',
@@ -307,7 +308,7 @@ export class ImportComponent {
   importing = false;
   error = '';
 
-  private readonly baseUrl = 'https://localhost:7105/api/words/import';
+  private readonly baseUrl = `${environment.apiUrl}/words/import`;
 
   constructor(
     private http: HttpClient,

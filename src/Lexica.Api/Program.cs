@@ -56,7 +56,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4303")
+        policy.WithOrigins("http://localhost:4303", "http://192.168.1.9:4303")
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
@@ -68,7 +68,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();

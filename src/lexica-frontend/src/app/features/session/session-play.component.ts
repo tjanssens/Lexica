@@ -2,6 +2,7 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface SessionWord {
   wordId: string;
@@ -340,7 +341,7 @@ export class SessionPlayComponent implements OnInit {
   private startY = 0;
   private threshold = 50;
 
-  private readonly baseUrl = 'https://localhost:7105/api/sessions';
+  private readonly baseUrl = `${environment.apiUrl}/sessions`;
 
   constructor(
     private http: HttpClient,
