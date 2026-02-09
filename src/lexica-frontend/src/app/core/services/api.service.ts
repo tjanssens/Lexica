@@ -18,6 +18,10 @@ export class ApiService {
     return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, { email, password });
   }
 
+  googleLogin(idToken: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/google`, { idToken });
+  }
+
   // Words
   getWords(language?: string): Observable<WordDto[]> {
     let params = new HttpParams();

@@ -29,6 +29,10 @@ export class AuthService {
     return this.api.login(email, password);
   }
 
+  googleLogin(idToken: string) {
+    return this.api.googleLogin(idToken);
+  }
+
   handleAuthResponse(response: AuthResponse): void {
     localStorage.setItem(this.TOKEN_KEY, response.token);
     localStorage.setItem(this.EMAIL_KEY, response.email);

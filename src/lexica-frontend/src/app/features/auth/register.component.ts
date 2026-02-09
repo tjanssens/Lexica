@@ -1,8 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
+
+declare const google: any;
 
 @Component({
   selector: 'app-register',
@@ -60,6 +63,12 @@ import { AuthService } from '../../core/services/auth.service';
             {{ loading ? 'Bezig...' : 'Registreren' }}
           </button>
         </form>
+
+        <div class="divider">
+          <span>of</span>
+        </div>
+
+        <div #googleBtn class="google-btn-container"></div>
 
         <p class="auth-link">
           Al een account? <a routerLink="/login">Inloggen</a>
@@ -162,6 +171,30 @@ import { AuthService } from '../../core/services/auth.service';
       }
     }
 
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 1.5rem 0;
+      color: #999;
+      font-size: 0.85rem;
+
+      &::before, &::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e0e0e0;
+      }
+
+      span {
+        padding: 0 0.75rem;
+      }
+    }
+
+    .google-btn-container {
+      display: flex;
+      justify-content: center;
+    }
+
     .auth-link {
       margin-top: 1.5rem;
       color: #666;
@@ -179,14 +212,57 @@ import { AuthService } from '../../core/services/auth.service';
     }
   `]
 })
-export class RegisterComponent {
+export class RegisterComponent implements AfterViewInit {
+  @ViewChild('googleBtn') googleBtn!: ElementRef;
+
   email = '';
   password = '';
   confirmPassword = '';
   error = '';
   loading = false;
 
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService, private ngZone: NgZone) {}
+
+  ngAfterViewInit() {
+    this.renderGoogleButton();
+  }
+
+  private renderGoogleButton() {
+    if (typeof google === 'undefined') {
+      setTimeout(() => this.renderGoogleButton(), 100);
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: environment.googleClientId,
+      callback: (response: any) => this.handleGoogleResponse(response)
+    });
+
+    google.accounts.id.renderButton(this.googleBtn.nativeElement, {
+      theme: 'outline',
+      size: 'large',
+      width: '100%',
+      text: 'signup_with'
+    });
+  }
+
+  private handleGoogleResponse(response: any) {
+    this.ngZone.run(() => {
+      this.loading = true;
+      this.error = '';
+
+      this.auth.googleLogin(response.credential).subscribe({
+        next: (res) => {
+          this.auth.handleAuthResponse(res);
+          this.loading = false;
+        },
+        error: (err) => {
+          this.error = err.error?.message || 'Google registratie mislukt. Probeer het opnieuw.';
+          this.loading = false;
+        }
+      });
+    });
+  }
 
   onSubmit() {
     if (this.password !== this.confirmPassword) {
