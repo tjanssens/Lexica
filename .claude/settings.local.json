@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --teleport session_01ApPHNasPhg3QEU4XAL1wXX)",
+      "Bash(git checkout:*)",
+      "Bash(dotnet:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "Bash(npx ng new:*)",
+      "Bash(npx ng build)",
+      "Bash(npx ng serve --open)",
+      "Bash(npm install:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(timeout:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(chcp:*)",
+      "Bash(npm start)",
+      "Bash(python3:*)",
+      "Bash(dir:*)",
+      "Bash(unzip:*)",
+      "Bash(ping:*)",
+      "Bash(tasklist:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(npx ng build:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
