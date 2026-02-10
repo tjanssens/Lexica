@@ -1,0 +1,56 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20.x'
+  AZURE_WEBAPP_NAME: 'lexica'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: src/lexica-frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: npm ci
+      working-directory: src/lexica-frontend
+
+    - name: Build Angular app
+      run: npm run build -- --configuration production
+      working-directory: src/lexica-frontend
+
+    - name: Restore .NET dependencies
+      run: dotnet restore Lexica.sln
+
+    - name: Publish .NET app
+      run: dotnet publish src/Lexica.Api/Lexica.Api.csproj -c Release -o ./publish
+
+    - name: Copy Angular build to wwwroot
+      run: |
+        mkdir -p ./publish/wwwroot
+        cp -r src/lexica-frontend/dist/lexica-frontend/browser/* ./publish/wwwroot/
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./publish

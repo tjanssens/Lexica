@@ -52,13 +52,18 @@ builder.Services.AddScoped<ExcelExportService>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// CORS for Angular dev server
+// CORS - only needed in development (production serves SPA from same origin)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4303", "http://192.168.1.9:4303")
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:4303", "http://192.168.1.9:4303")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
 });
 
 var app = builder.Build();
@@ -72,15 +77,18 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
-// Auto-migrate in development
-if (app.Environment.IsDevelopment())
+// Auto-migrate database on startup
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
