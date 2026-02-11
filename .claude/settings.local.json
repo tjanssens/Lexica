@@ -33,7 +33,8 @@
       "Bash(netsh advfirewall firewall add rule:*)",
       "Bash(netsh advfirewall firewall show rule:*)",
       "Bash(git status:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(cmd /c \"type nul\")"
     ]
   }
 }
