@@ -41,7 +41,30 @@ export class AuthService {
     localStorage.setItem(this.TOKEN_KEY, response.token);
     localStorage.setItem(this.EMAIL_KEY, response.email);
     this.tokenSignal.set(response.token);
+    
+    // Load profile data (display name + picture) after login
+    this.loadProfileData();
+    
     this.router.navigate(['/']);
+  }
+
+  private loadProfileData(): void {
+    this.api.getProfile().subscribe({
+      next: (profile) => {
+        if (profile.displayName) {
+          this.updateDisplayName(profile.displayName);
+        }
+        if (profile.profilePictureUrl) {
+          const fullUrl = this.api.resolveUrl(profile.profilePictureUrl);
+          if (fullUrl) {
+            this.updateProfilePicture(fullUrl);
+          }
+        }
+      },
+      error: () => {
+        // Silently fail - profile data is not critical for login
+      }
+    });
   }
 
   updateDisplayName(name: string): void {
