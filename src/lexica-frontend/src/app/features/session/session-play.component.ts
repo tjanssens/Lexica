@@ -622,7 +622,7 @@ export class SessionPlayComponent implements OnInit {
     const wordId = this.currentWord.wordId;
     const notes = this.noteText.trim() || undefined;
 
-    this.http.put<any>(`${environment.apiUrl}/words/${wordId}`, { notes: notes ?? '' }).subscribe({
+    this.http.put<any>(`${environment.apiUrl}/words/${wordId}/notes`, { notes: notes ?? '' }).subscribe({
       next: () => {
         if (this.currentWord && this.currentWord.wordId === wordId) {
           this.currentWord.notes = notes;

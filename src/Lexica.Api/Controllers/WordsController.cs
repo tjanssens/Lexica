@@ -143,6 +143,27 @@ public class WordsController(AppDbContext db) : ControllerBase
             p?.Repetitions ?? 0, p?.DueDate ?? DateTime.UtcNow.Date, p?.LastReviewed, p?.TimesReviewed ?? 0));
     }
 
+    [HttpPut("{id:guid}/notes")]
+    public async Task<IActionResult> UpdateNotes(Guid id, UpdateNotesRequest request)
+    {
+        // Allow owner OR subscriber of a set containing this word
+        var word = await db.Words.FirstOrDefaultAsync(w => w.Id == id &&
+            (w.UserId == UserId || w.SetWords.Any(sw => sw.Set.Subscriptions.Any(sub => sub.UserId == UserId))));
+        if (word == null) return NotFound();
+
+        var progress = await db.UserWordProgress
+            .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == id);
+        if (progress == null)
+        {
+            progress = new UserWordProgress { UserId = UserId, WordId = id };
+            db.UserWordProgress.Add(progress);
+        }
+        progress.Notes = request.Notes;
+
+        await db.SaveChangesAsync();
+        return Ok();
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

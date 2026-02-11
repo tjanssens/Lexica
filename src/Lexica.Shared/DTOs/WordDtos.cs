@@ -33,3 +33,5 @@ public record UpdateWordRequest(
     string? PartOfSpeech,
     string? Notes
 );
+
+public record UpdateNotesRequest(string Notes);
