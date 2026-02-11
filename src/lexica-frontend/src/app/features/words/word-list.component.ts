@@ -14,7 +14,14 @@ import { WordItemComponent } from '../../shared/components/word-item.component';
       <header class="page-header">
         <a routerLink="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
         <h1>Woordenlijst</h1>
-        <a routerLink="/words/new" class="add-btn"><i class="fa-solid fa-plus"></i></a>
+        <div class="header-actions">
+          <a routerLink="/import" class="header-icon" title="Importeren">
+            <i class="fa-solid fa-file-import"></i>
+          </a>
+          <a routerLink="/words/new" class="header-icon" title="Woord toevoegen">
+            <i class="fa-solid fa-plus"></i>
+          </a>
+        </div>
       </header>
 
       <div class="filters">
@@ -65,7 +72,7 @@ import { WordItemComponent } from '../../shared/components/word-item.component';
       gap: 1rem;
     }
 
-    .back-btn, .add-btn {
+    .back-btn {
       color: white;
       text-decoration: none;
       font-size: 1.5rem;
@@ -74,6 +81,22 @@ import { WordItemComponent } from '../../shared/components/word-item.component';
     }
 
     h1 { flex: 1; font-size: 1.25rem; margin: 0; }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .header-icon {
+      color: white;
+      text-decoration: none;
+      font-size: 1.25rem;
+      width: 2rem;
+      text-align: center;
+      opacity: 0.9;
+      &:hover { opacity: 1; }
+    }
 
     .filters {
       padding: 1rem;
