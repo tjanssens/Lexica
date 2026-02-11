@@ -34,7 +34,21 @@
       "Bash(netsh advfirewall firewall show rule:*)",
       "Bash(git status:*)",
       "Bash(git push:*)",
-      "Bash(cmd /c \"type nul\")"
+      "Bash(cmd /c \"type nul\")",
+      "Bash(winget install:*)",
+      "Bash(cmd /c:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(az webapp log tail:*)",
+      "Bash(az webapp log:*)",
+      "Bash(az webapp show:*)",
+      "Bash(az webapp deployment:*)",
+      "Bash(az webapp config appsettings list:*)",
+      "Bash(az rest:*)",
+      "Bash(npm run build:*)",
+      "Bash(ffmpeg:*)"
     ]
   }
 }

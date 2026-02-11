@@ -23,16 +23,23 @@ public class SessionsController(AppDbContext db) : ControllerBase
         var sessionSize = request.SessionSize ?? 20;
         var today = DateTime.UtcNow.Date;
 
+        // Only allow sets the user owns or is subscribed to
+        var allowedSetIds = await db.Sets
+            .Where(s => request.SetIds.Contains(s.Id) &&
+                (s.UserId == UserId || s.Subscriptions.Any(sub => sub.UserId == UserId)))
+            .Select(s => s.Id)
+            .ToListAsync();
+
         // Get word IDs in selected sets
         var setWordIds = await db.SetWords
-            .Where(sw => request.SetIds.Contains(sw.SetId))
+            .Where(sw => allowedSetIds.Contains(sw.SetId))
             .Select(sw => sw.WordId)
             .Distinct()
             .ToListAsync();
 
-        // Get words with their progress for the session
+        // Get words with their progress for the session (no UserId filter: shared sets have words owned by others)
         var wordsWithProgress = await db.Words
-            .Where(w => w.UserId == UserId && setWordIds.Contains(w.Id))
+            .Where(w => setWordIds.Contains(w.Id))
             .Select(w => new
             {
                 Word = w,
@@ -71,7 +78,9 @@ public class SessionsController(AppDbContext db) : ControllerBase
     [HttpPost("review")]
     public async Task<ActionResult<ReviewResponse>> Review(ReviewRequest request)
     {
-        var word = await db.Words.FirstOrDefaultAsync(w => w.Id == request.WordId && w.UserId == UserId);
+        // Allow reviewing own words or words in subscribed sets
+        var word = await db.Words.FirstOrDefaultAsync(w => w.Id == request.WordId &&
+            (w.UserId == UserId || w.SetWords.Any(sw => sw.Set.Subscriptions.Any(sub => sub.UserId == UserId))));
         if (word == null) return NotFound();
 
         if (!Enum.TryParse<ReviewResult>(request.Result, true, out var result))
