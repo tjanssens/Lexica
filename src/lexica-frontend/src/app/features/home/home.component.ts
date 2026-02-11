@@ -128,10 +128,10 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
               <span class="action-title">Sets</span>
               <span class="action-desc">Organiseer en deel sets</span>
             </a>
-            <a routerLink="/import" class="action-card">
-              <span class="action-icon"><i class="fa-solid fa-file-import"></i></span>
-              <span class="action-title">Importeren</span>
-              <span class="action-desc">Import vanuit Excel</span>
+            <a routerLink="/sets/public" class="action-card">
+              <span class="action-icon"><i class="fa-solid fa-compass"></i></span>
+              <span class="action-title">Ontdek</span>
+              <span class="action-desc">Browse publieke sets</span>
             </a>
           </div>
         </section>
