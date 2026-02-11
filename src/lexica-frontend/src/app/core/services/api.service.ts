@@ -45,41 +45,6 @@ export class ApiService {
     return this.http.delete<void>(`${this.baseUrl}/words/${id}`);
   }
 
-  // Groups
-  getGroups(language?: string): Observable<GroupDto[]> {
-    let params = new HttpParams();
-    if (language) params = params.set('language', language);
-    return this.http.get<GroupDto[]>(`${this.baseUrl}/groups`, { params });
-  }
-
-  getGroup(id: string): Observable<GroupDto> {
-    return this.http.get<GroupDto>(`${this.baseUrl}/groups/${id}`);
-  }
-
-  createGroup(group: CreateGroupRequest): Observable<GroupDto> {
-    return this.http.post<GroupDto>(`${this.baseUrl}/groups`, group);
-  }
-
-  updateGroup(id: string, group: UpdateGroupRequest): Observable<GroupDto> {
-    return this.http.put<GroupDto>(`${this.baseUrl}/groups/${id}`, group);
-  }
-
-  deleteGroup(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/groups/${id}`);
-  }
-
-  getGroupWords(groupId: string): Observable<WordDto[]> {
-    return this.http.get<WordDto[]>(`${this.baseUrl}/groups/${groupId}/words`);
-  }
-
-  addWordsToGroup(groupId: string, request: AddWordsToGroupRequest): Observable<{ added: number }> {
-    return this.http.post<{ added: number }>(`${this.baseUrl}/groups/${groupId}/words`, request);
-  }
-
-  removeWordsFromGroup(groupId: string, wordIds: string[]): Observable<{ removed: number }> {
-    return this.http.delete<{ removed: number }>(`${this.baseUrl}/groups/${groupId}/words`, { body: wordIds });
-  }
-
   // Stats
   getStats(): Observable<UserStatsDto> {
     return this.http.get<UserStatsDto>(`${this.baseUrl}/stats`);
@@ -207,36 +172,6 @@ export interface UpdateWordRequest {
   translation?: string;
   partOfSpeech?: string;
   notes?: string;
-}
-
-export interface GroupDto {
-  id: string;
-  name: string;
-  language: string;
-  defaultDirection: string;
-  wordCount: number;
-  masteredWordCount: number;
-  inProgressWordCount: number;
-  createdAt: string;
-}
-
-export interface CreateGroupRequest {
-  name: string;
-  language: string;
-  defaultDirection: string;
-  fromNumber?: number;
-  toNumber?: number;
-}
-
-export interface UpdateGroupRequest {
-  name?: string;
-  defaultDirection?: string;
-}
-
-export interface AddWordsToGroupRequest {
-  wordIds?: string[];
-  fromNumber?: number;
-  toNumber?: number;
 }
 
 export interface UserStatsDto {

@@ -474,7 +474,7 @@ export class SessionPlayComponent implements OnInit {
     this.direction = config.direction;
 
     this.http.post<SessionWord[]>(`${this.baseUrl}/next`, {
-      groupIds: config.groupIds,
+      setIds: config.setIds,
       direction: config.direction,
       sessionSize: config.sessionSize
     }).subscribe({

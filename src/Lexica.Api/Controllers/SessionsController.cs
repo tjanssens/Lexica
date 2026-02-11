@@ -23,16 +23,16 @@ public class SessionsController(AppDbContext db) : ControllerBase
         var sessionSize = request.SessionSize ?? 20;
         var today = DateTime.UtcNow.Date;
 
-        // Get word IDs in selected groups
-        var groupWordIds = await db.GroupWords
-            .Where(gw => request.GroupIds.Contains(gw.GroupId))
-            .Select(gw => gw.WordId)
+        // Get word IDs in selected sets
+        var setWordIds = await db.SetWords
+            .Where(sw => request.SetIds.Contains(sw.SetId))
+            .Select(sw => sw.WordId)
             .Distinct()
             .ToListAsync();
 
         // Get words with their progress for the session
         var wordsWithProgress = await db.Words
-            .Where(w => w.UserId == UserId && groupWordIds.Contains(w.Id))
+            .Where(w => w.UserId == UserId && setWordIds.Contains(w.Id))
             .Select(w => new
             {
                 Word = w,

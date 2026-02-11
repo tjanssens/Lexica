@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ApiService, GroupDto } from '../../core/services/api.service';
+import { ApiService, SetDto } from '../../core/services/api.service';
 
 @Component({
   selector: 'app-session-start',
@@ -16,21 +16,21 @@ import { ApiService, GroupDto } from '../../core/services/api.service';
       </header>
 
       <div class="content">
-        <h2>Kies groep(en)</h2>
+        <h2>Kies set(s)</h2>
         <div class="group-select">
-          @for (group of groups; track group.id) {
-            <label class="group-option" [class.selected]="selectedGroupIds.has(group.id)">
+          @for (set of sets; track set.id) {
+            <label class="group-option" [class.selected]="selectedSetIds.has(set.id)">
               <input type="checkbox"
-                [checked]="selectedGroupIds.has(group.id)"
-                (change)="toggleGroup(group.id)" />
-              <span class="group-lang"><i class="fa-solid" [class.fa-landmark]="group.language === 'Latin'" [class.fa-scroll]="group.language !== 'Latin'"></i></span>
+                [checked]="selectedSetIds.has(set.id)"
+                (change)="toggleSet(set.id)" />
+              <span class="group-lang"><i class="fa-solid" [class.fa-landmark]="set.language === 'Latin'" [class.fa-scroll]="set.language !== 'Latin'"></i></span>
               <div class="group-info">
-                <strong>{{ group.name }}</strong>
-                <span>{{ group.wordCount }} woorden</span>
+                <strong>{{ set.name }}</strong>
+                <span>{{ set.wordCount }} woorden</span>
               </div>
             </label>
           } @empty {
-            <p class="empty">Geen groepen gevonden. <a routerLink="/groups/new">Maak er een aan.</a></p>
+            <p class="empty">Geen sets gevonden. <a routerLink="/sets/new">Maak er een aan.</a></p>
           }
         </div>
 
@@ -51,7 +51,7 @@ import { ApiService, GroupDto } from '../../core/services/api.service';
         </div>
 
         <button class="start-btn"
-          [disabled]="selectedGroupIds.size === 0 || loading"
+          [disabled]="selectedSetIds.size === 0 || loading"
           (click)="startSession()">
           {{ loading ? 'Laden...' : 'Start sessie' }}
         </button>
@@ -135,8 +135,8 @@ import { ApiService, GroupDto } from '../../core/services/api.service';
   `]
 })
 export class SessionStartComponent implements OnInit {
-  groups: GroupDto[] = [];
-  selectedGroupIds = new Set<string>();
+  sets: SetDto[] = [];
+  selectedSetIds = new Set<string>();
   direction = 'TargetToNl';
   sessionSize = 20;
   loading = false;
@@ -153,17 +153,17 @@ export class SessionStartComponent implements OnInit {
       this.direction = prefs.direction ?? this.direction;
       this.sessionSize = prefs.sessionSize ?? this.sessionSize;
     }
-    this.api.getGroups().subscribe(g => this.groups = g);
+    this.api.getSets().subscribe(s => this.sets = s);
   }
 
-  toggleGroup(id: string) {
-    if (this.selectedGroupIds.has(id)) this.selectedGroupIds.delete(id);
-    else this.selectedGroupIds.add(id);
+  toggleSet(id: string) {
+    if (this.selectedSetIds.has(id)) this.selectedSetIds.delete(id);
+    else this.selectedSetIds.add(id);
   }
 
   startSession() {
     this.loading = true;
-    const groupIds = Array.from(this.selectedGroupIds);
+    const setIds = Array.from(this.selectedSetIds);
 
     localStorage.setItem('session_prefs', JSON.stringify({
       direction: this.direction,
@@ -172,7 +172,7 @@ export class SessionStartComponent implements OnInit {
 
     // Store session config and navigate to play
     sessionStorage.setItem('session_config', JSON.stringify({
-      groupIds,
+      setIds,
       direction: this.direction,
       sessionSize: this.sessionSize
     }));

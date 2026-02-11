@@ -15,7 +15,13 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
         <div class="header-top">
           <h1>Lexica</h1>
           <div class="header-actions">
-            <a routerLink="/profile" class="profile-btn"><i class="fa-solid fa-user"></i></a>
+            <a routerLink="/profile" class="profile-btn">
+              @if (auth.profilePicture()) {
+                <img [src]="api.resolveUrl(auth.profilePicture())" class="profile-img" alt="Profiel" />
+              } @else {
+                <i class="fa-solid fa-user"></i>
+              }
+            </a>
             <button class="logout-btn" (click)="logout()">Uitloggen</button>
           </div>
         </div>
@@ -162,9 +168,11 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
       background: rgba(255,255,255,0.15); color: white; border: none;
       width: 36px; height: 36px; border-radius: 50%; display: flex;
       align-items: center; justify-content: center; text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.9rem; overflow: hidden;
       &:hover { background: rgba(255,255,255,0.25); }
     }
+
+    .profile-img { width: 100%; height: 100%; object-fit: cover; }
 
     .logout-btn {
       background: rgba(255,255,255,0.15); color: white; border: none;
@@ -319,7 +327,7 @@ export class HomeComponent implements OnInit {
 
   constructor(
     public auth: AuthService,
-    private api: ApiService
+    public api: ApiService
   ) {}
 
   ngOnInit() {

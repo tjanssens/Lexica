@@ -1,7 +1,7 @@
 namespace Lexica.Shared.DTOs;
 
 public record SessionRequest(
-    List<Guid> GroupIds,
+    List<Guid> SetIds,
     string Direction,
     int? SessionSize
 );
