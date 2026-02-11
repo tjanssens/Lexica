@@ -128,7 +128,7 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
               <span class="action-title">Sets</span>
               <span class="action-desc">Organiseer en deel sets</span>
             </a>
-            <a routerLink="/sets/public" class="action-card">
+            <a routerLink="/sets" [queryParams]="{tab: 'discover'}" class="action-card">
               <span class="action-icon"><i class="fa-solid fa-compass"></i></span>
               <span class="action-title">Ontdek</span>
               <span class="action-desc">Browse publieke sets</span>

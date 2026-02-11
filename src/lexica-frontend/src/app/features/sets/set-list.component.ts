@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ApiService, SetDto, PublicSetDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
 
@@ -195,9 +195,22 @@ export class SetListComponent implements OnInit {
   searchQuery = '';
   tab: 'mine' | 'discover' = 'mine';
 
-  constructor(public api: ApiService) {}
+  constructor(
+    public api: ApiService,
+    private route: ActivatedRoute
+  ) {}
 
-  ngOnInit() { this.loadSets(); }
+  ngOnInit() {
+    // Check for query parameter to open discover tab
+    this.route.queryParams.subscribe(params => {
+      if (params['tab'] === 'discover') {
+        this.tab = 'discover';
+        this.loadPublicSets();
+      } else {
+        this.loadSets();
+      }
+    });
+  }
 
   loadSets() {
     this.api.getSets(this.languageFilter || undefined).subscribe(s => this.sets = s);
