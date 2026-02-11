@@ -1,14 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService, DayStatsDto, SetDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, SetItemComponent],
+  imports: [CommonModule, RouterLink, SetItemComponent, LoadingComponent],
   template: `
     <div class="home-container">
       <header class="home-header">
@@ -39,7 +41,10 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
         }
       </header>
 
-      <main class="home-content">
+      @if (loading) {
+        <app-loading message="Dashboard laden..."></app-loading>
+      } @else {
+        <main class="home-content">
         @if (pausedSession) {
           <a routerLink="/session/play" class="resume-cta">
             <div class="cta-icon"><i class="fa-solid fa-play"></i></div>
@@ -148,6 +153,7 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
           </section>
         }
       </main>
+      }
     </div>
   `,
   styles: [`
@@ -321,6 +327,7 @@ export class HomeComponent implements OnInit {
   stats: UserStatsDto | null = null;
   weeklyStats: WeeklyStatsDto | null = null;
   pausedSession: { remaining: number; totalWords: number } | null = null;
+  loading = true;
 
   private maxReviews = 1;
   private dayNames = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
@@ -331,11 +338,16 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.api.getSets().subscribe(sets => this.sets = sets);
-    this.api.getStats().subscribe(stats => this.stats = stats);
-    this.api.getWeeklyStats().subscribe(ws => {
-      this.weeklyStats = ws;
-      this.maxReviews = Math.max(1, ...ws.days.map(d => d.totalReviews));
+    forkJoin({
+      sets: this.api.getSets(),
+      stats: this.api.getStats(),
+      weeklyStats: this.api.getWeeklyStats()
+    }).subscribe(result => {
+      this.sets = result.sets;
+      this.stats = result.stats;
+      this.weeklyStats = result.weeklyStats;
+      this.maxReviews = Math.max(1, ...result.weeklyStats.days.map(d => d.totalReviews));
+      this.loading = false;
     });
 
     const pausedStr = sessionStorage.getItem('session_paused');

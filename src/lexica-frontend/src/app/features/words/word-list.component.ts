@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-word-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent],
+  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -48,16 +49,20 @@ import { WordItemComponent } from '../../shared/components/word-item.component';
         </button>
       </div>
 
-      <div class="word-list">
-        @for (word of filteredWords; track word.id) {
-          <app-word-item [word]="word"></app-word-item>
-        } @empty {
-          <div class="empty-state">
-            <p>Nog geen woorden.</p>
-            <a routerLink="/words/new">Voeg je eerste woord toe</a>
-          </div>
-        }
-      </div>
+      @if (loading) {
+        <app-loading message="Woorden laden..."></app-loading>
+      } @else {
+        <div class="word-list">
+          @for (word of filteredWords; track word.id) {
+            <app-word-item [word]="word"></app-word-item>
+          } @empty {
+            <div class="empty-state">
+              <p>Nog geen woorden.</p>
+              <a routerLink="/words/new">Voeg je eerste woord toe</a>
+            </div>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -154,6 +159,7 @@ export class WordListComponent implements OnInit {
   searchQuery = '';
   sortBy: 'number' | 'stars' = 'number';
   sortDir: 'asc' | 'desc' = 'asc';
+  loading = true;
 
   constructor(private api: ApiService) {}
 
@@ -168,9 +174,11 @@ export class WordListComponent implements OnInit {
   }
 
   loadWords() {
+    this.loading = true;
     this.api.getWords(this.languageFilter || undefined).subscribe(words => {
       this.words = words;
       this.filterWords();
+      this.loading = false;
     });
   }
 

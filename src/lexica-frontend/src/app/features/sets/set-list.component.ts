@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ApiService, SetDto, PublicSetDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-set-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SetItemComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SetItemComponent, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -31,16 +32,20 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
           </select>
         </div>
 
-        <div class="set-list">
-          @for (set of sets; track set.id) {
-            <app-set-item [set]="set"></app-set-item>
-          } @empty {
-            <div class="empty-state">
-              <p>Nog geen sets.</p>
-              <a routerLink="/sets/new">Maak je eerste set aan</a>
-            </div>
-          }
-        </div>
+        @if (loading) {
+          <app-loading message="Sets laden..."></app-loading>
+        } @else {
+          <div class="set-list">
+            @for (set of sets; track set.id) {
+              <app-set-item [set]="set"></app-set-item>
+            } @empty {
+              <div class="empty-state">
+                <p>Nog geen sets.</p>
+                <a routerLink="/sets/new">Maak je eerste set aan</a>
+              </div>
+            }
+          </div>
+        }
       }
 
       @if (tab === 'discover') {
@@ -53,42 +58,46 @@ import { SetItemComponent } from '../../shared/components/set-item.component';
           <input type="text" [(ngModel)]="searchQuery" (input)="loadPublicSets()" placeholder="Zoek sets..." class="search-input" />
         </div>
 
-        <div class="set-list">
-          @for (pset of publicSets; track pset.id) {
-            <div class="public-set-item">
-              <a [routerLink]="pset.isSubscribed ? ['/sets', pset.id] : null" class="public-set-info" [class.clickable]="pset.isSubscribed">
-                <span class="set-lang"><i class="fa-solid" [class.fa-landmark]="pset.language === 'Latin'" [class.fa-scroll]="pset.language !== 'Latin'"></i></span>
-                <div class="set-details">
-                  <strong>{{ pset.name }}</strong>
-                  @if (pset.description) {
-                    <span class="set-desc">{{ pset.description }}</span>
-                  }
-                  <div class="set-meta">
-                    <span class="owner">
-                      @if (pset.ownerPictureUrl) {
-                        <img [src]="api.resolveUrl(pset.ownerPictureUrl)" class="owner-avatar" />
-                      }
-                      {{ pset.ownerName }}
-                    </span>
-                    <span class="meta-sep">·</span>
-                    <span>{{ pset.wordCount }} woorden</span>
-                    @if (pset.subscriberCount > 0) {
-                      <span class="meta-sep">·</span>
-                      <span>{{ pset.subscriberCount }} abonnees</span>
+        @if (loading) {
+          <app-loading message="Sets ontdekken..."></app-loading>
+        } @else {
+          <div class="set-list">
+            @for (pset of publicSets; track pset.id) {
+              <div class="public-set-item">
+                <a [routerLink]="pset.isSubscribed ? ['/sets', pset.id] : null" class="public-set-info" [class.clickable]="pset.isSubscribed">
+                  <span class="set-lang"><i class="fa-solid" [class.fa-landmark]="pset.language === 'Latin'" [class.fa-scroll]="pset.language !== 'Latin'"></i></span>
+                  <div class="set-details">
+                    <strong>{{ pset.name }}</strong>
+                    @if (pset.description) {
+                      <span class="set-desc">{{ pset.description }}</span>
                     }
+                    <div class="set-meta">
+                      <span class="owner">
+                        @if (pset.ownerPictureUrl) {
+                          <img [src]="api.resolveUrl(pset.ownerPictureUrl)" class="owner-avatar" />
+                        }
+                        {{ pset.ownerName }}
+                      </span>
+                      <span class="meta-sep">·</span>
+                      <span>{{ pset.wordCount }} woorden</span>
+                      @if (pset.subscriberCount > 0) {
+                        <span class="meta-sep">·</span>
+                        <span>{{ pset.subscriberCount }} abonnees</span>
+                      }
+                    </div>
                   </div>
-                </div>
-              </a>
-              <button class="subscribe-btn" [class.subscribed]="pset.isSubscribed" (click)="toggleSubscribe(pset)">
-                {{ pset.isSubscribed ? 'Uitschrijven' : 'Abonneren' }}
-              </button>
-            </div>
-          } @empty {
-            <div class="empty-state">
-              <p>Geen publieke sets gevonden.</p>
-            </div>
-          }
-        </div>
+                </a>
+                <button class="subscribe-btn" [class.subscribed]="pset.isSubscribed" (click)="toggleSubscribe(pset)">
+                  {{ pset.isSubscribed ? 'Uitschrijven' : 'Abonneren' }}
+                </button>
+              </div>
+            } @empty {
+              <div class="empty-state">
+                <p>Geen publieke sets gevonden.</p>
+              </div>
+            }
+          </div>
+        }
       }
     </div>
   `,
@@ -194,6 +203,7 @@ export class SetListComponent implements OnInit {
   discoverLanguage = '';
   searchQuery = '';
   tab: 'mine' | 'discover' = 'mine';
+  loading = true;
 
   constructor(
     public api: ApiService,
@@ -213,14 +223,22 @@ export class SetListComponent implements OnInit {
   }
 
   loadSets() {
-    this.api.getSets(this.languageFilter || undefined).subscribe(s => this.sets = s);
+    this.loading = true;
+    this.api.getSets(this.languageFilter || undefined).subscribe(s => {
+      this.sets = s;
+      this.loading = false;
+    });
   }
 
   loadPublicSets() {
+    this.loading = true;
     this.api.getPublicSets(
       this.discoverLanguage || undefined,
       this.searchQuery || undefined
-    ).subscribe(s => this.publicSets = s);
+    ).subscribe(s => {
+      this.publicSets = s;
+      this.loading = false;
+    });
   }
 
   toggleSubscribe(pset: PublicSetDto) {
