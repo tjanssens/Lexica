@@ -30,17 +30,26 @@ public class SessionsController(AppDbContext db) : ControllerBase
             .Distinct()
             .ToListAsync();
 
-        // Get words for the session
-        var words = await db.Words
+        // Get words with their progress for the session
+        var wordsWithProgress = await db.Words
             .Where(w => w.UserId == UserId && groupWordIds.Contains(w.Id))
+            .Select(w => new
+            {
+                Word = w,
+                Progress = w.UserProgress.FirstOrDefault(p => p.UserId == UserId)
+            })
             .ToListAsync();
 
         // Priority selection
-        var overdue = words.Where(w => w.DueDate < today).OrderBy(w => w.DueDate).ToList();
-        var dueToday = words.Where(w => w.DueDate == today).ToList();
-        var newWords = words.Where(w => w.Repetitions == 0 && w.DueDate >= today).ToList();
+        var overdue = wordsWithProgress
+            .Where(wp => (wp.Progress?.DueDate ?? today) < today)
+            .OrderBy(wp => wp.Progress!.DueDate).ToList();
+        var dueToday = wordsWithProgress
+            .Where(wp => (wp.Progress?.DueDate ?? today) == today && (wp.Progress?.Repetitions ?? 0) > 0).ToList();
+        var newWords = wordsWithProgress
+            .Where(wp => (wp.Progress?.Repetitions ?? 0) == 0 && (wp.Progress?.DueDate ?? today) >= today).ToList();
 
-        var selected = new List<Word>();
+        var selected = new List<dynamic>();
         selected.AddRange(overdue.Take(sessionSize));
 
         if (selected.Count < sessionSize)
@@ -49,9 +58,11 @@ public class SessionsController(AppDbContext db) : ControllerBase
         if (selected.Count < sessionSize)
             selected.AddRange(newWords.Take(sessionSize - selected.Count));
 
-        var result = selected.Select(w => new SessionWordDto(
-            w.Id, w.Term, w.Translation, w.PartOfSpeech, w.Notes,
-            w.Repetitions == 0
+        var result = selected.Select(wp => new SessionWordDto(
+            ((Word)wp.Word).Id, ((Word)wp.Word).Term, ((Word)wp.Word).Translation,
+            ((Word)wp.Word).PartOfSpeech,
+            ((UserWordProgress?)wp.Progress)?.Notes,
+            ((UserWordProgress?)wp.Progress)?.Repetitions == 0 || wp.Progress == null
         )).ToList();
 
         return Ok(result);
@@ -68,24 +79,33 @@ public class SessionsController(AppDbContext db) : ControllerBase
         if (!Enum.TryParse<Direction>(request.Direction, true, out var direction))
             return BadRequest("Ongeldige richting.");
 
-        var easinessBefore = word.Easiness;
+        var progress = await db.UserWordProgress
+            .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == request.WordId);
+        if (progress == null)
+        {
+            progress = new UserWordProgress { UserId = UserId, WordId = request.WordId };
+            db.UserWordProgress.Add(progress);
+        }
+
+        var easinessBefore = progress.Easiness;
 
         // SM-2 calculation
         var (newEasiness, newInterval, newRepetitions, newDueDate) =
-            Sm2Service.Calculate(word.Easiness, word.Interval, word.Repetitions, result);
+            Sm2Service.Calculate(progress.Easiness, progress.Interval, progress.Repetitions, result);
 
-        word.Easiness = newEasiness;
-        word.Interval = newInterval;
-        word.Repetitions = newRepetitions;
-        word.DueDate = newDueDate;
-        word.LastReviewed = DateTime.UtcNow;
-        word.TimesReviewed++;
+        progress.Easiness = newEasiness;
+        progress.Interval = newInterval;
+        progress.Repetitions = newRepetitions;
+        progress.DueDate = newDueDate;
+        progress.LastReviewed = DateTime.UtcNow;
+        progress.TimesReviewed++;
 
         // Log the review
         db.ReviewLogs.Add(new ReviewLog
         {
             Id = Guid.NewGuid(),
             WordId = word.Id,
+            UserId = UserId,
             Direction = direction,
             Result = result,
             EasinessBefore = easinessBefore,
@@ -97,7 +117,7 @@ public class SessionsController(AppDbContext db) : ControllerBase
         int xp = result switch
         {
             ReviewResult.Unknown => 2,
-            ReviewResult.Known => word.Easiness < 2.0 ? 15 : 10,
+            ReviewResult.Known => progress.Easiness < 2.0 ? 15 : 10,
             ReviewResult.Easy => 15,
             _ => 0
         };

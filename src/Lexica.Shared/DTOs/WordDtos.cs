@@ -13,7 +13,8 @@ public record WordDto(
     int Repetitions,
     DateTime DueDate,
     DateTime? LastReviewed,
-    int TimesReviewed
+    int TimesReviewed,
+    bool IsOwner = true
 );
 
 public record CreateWordRequest(

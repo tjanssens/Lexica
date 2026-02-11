@@ -28,8 +28,11 @@ public class GroupsController(AppDbContext db) : ControllerBase
             .Select(g => new GroupDto(
                 g.Id, g.Name, g.Language.ToString(), g.DefaultDirection.ToString(),
                 g.GroupWords.Count,
-                g.GroupWords.Count(gw => gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21),
-                g.GroupWords.Count(gw => gw.Word.Repetitions > 0 && !(gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21)),
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                        !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 g.CreatedAt))
             .ToListAsync();
 
@@ -39,16 +42,21 @@ public class GroupsController(AppDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<GroupDto>> Get(Guid id)
     {
-        var g = await db.Groups.Include(g => g.GroupWords).ThenInclude(gw => gw.Word)
-            .FirstOrDefaultAsync(g => g.Id == id && g.UserId == UserId);
+        var g = await db.Groups
+            .Where(g => g.Id == id && g.UserId == UserId)
+            .Select(g => new GroupDto(
+                g.Id, g.Name, g.Language.ToString(), g.DefaultDirection.ToString(),
+                g.GroupWords.Count,
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                        !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
+                g.CreatedAt))
+            .FirstOrDefaultAsync();
         if (g == null) return NotFound();
 
-        return Ok(new GroupDto(
-            g.Id, g.Name, g.Language.ToString(), g.DefaultDirection.ToString(),
-            g.GroupWords.Count,
-            g.GroupWords.Count(gw => gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21),
-            g.GroupWords.Count(gw => gw.Word.Repetitions > 0 && !(gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21)),
-            g.CreatedAt));
+        return Ok(g);
     }
 
     [HttpPost]
@@ -94,22 +102,28 @@ public class GroupsController(AppDbContext db) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<GroupDto>> Update(Guid id, UpdateGroupRequest request)
     {
-        var group = await db.Groups.Include(g => g.GroupWords).ThenInclude(gw => gw.Word)
-            .FirstOrDefaultAsync(g => g.Id == id && g.UserId == UserId);
+        var group = await db.Groups
+            .Where(g => g.Id == id && g.UserId == UserId)
+            .Select(g => new GroupDto(
+                g.Id, g.Name, g.Language.ToString(), g.DefaultDirection.ToString(),
+                g.GroupWords.Count,
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
+                g.GroupWords.Count(gw => gw.Word.UserProgress
+                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                        !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
+                g.CreatedAt))
+            .FirstOrDefaultAsync();
         if (group == null) return NotFound();
 
-        if (request.Name != null) group.Name = request.Name;
+        var entity = await db.Groups.FindAsync(id);
+        if (request.Name != null) entity!.Name = request.Name;
         if (request.DefaultDirection != null && Enum.TryParse<Direction>(request.DefaultDirection, true, out var dir))
-            group.DefaultDirection = dir;
+            entity!.DefaultDirection = dir;
 
         await db.SaveChangesAsync();
 
-        return Ok(new GroupDto(
-            group.Id, group.Name, group.Language.ToString(), group.DefaultDirection.ToString(),
-            group.GroupWords.Count,
-            group.GroupWords.Count(gw => gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21),
-            group.GroupWords.Count(gw => gw.Word.Repetitions > 0 && !(gw.Word.Repetitions > 5 && gw.Word.Easiness > 2.3 && gw.Word.Interval > 21)),
-            group.CreatedAt));
+        return Ok(group);
     }
 
     [HttpDelete("{id:guid}")]
@@ -131,13 +145,19 @@ public class GroupsController(AppDbContext db) : ControllerBase
 
         var words = await db.GroupWords
             .Where(gw => gw.GroupId == id)
-            .Join(db.Words, gw => gw.WordId, w => w.Id, (gw, w) => w)
+            .Select(gw => gw.Word)
             .Where(w => w.UserId == UserId)
             .OrderBy(w => w.Number)
             .Select(w => new WordDto(
                 w.Id, w.Number, w.Language.ToString(), w.Term, w.Translation,
-                w.PartOfSpeech, w.Notes, w.Easiness, w.Interval, w.Repetitions,
-                w.DueDate, w.LastReviewed, w.TimesReviewed))
+                w.PartOfSpeech,
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Notes).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Easiness).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Interval).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Repetitions).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.DueDate).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.LastReviewed).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.TimesReviewed).FirstOrDefault()))
             .ToListAsync();
 
         return Ok(words);

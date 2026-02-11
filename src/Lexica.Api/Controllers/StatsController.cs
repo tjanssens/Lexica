@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Lexica.Core.Entities;
 using Lexica.Infrastructure.Data;
 using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -24,12 +23,12 @@ public class StatsController(AppDbContext db) : ControllerBase
         var today = DateTime.UtcNow.Date;
 
         var totalWords = await db.Words.CountAsync(w => w.UserId == UserId);
-        var masteredWords = await db.Words.CountAsync(w =>
-            w.UserId == UserId && w.Repetitions > 5 && w.Easiness > 2.3 && w.Interval > 21);
-        var inProgressWords = await db.Words.CountAsync(w =>
-            w.UserId == UserId && w.Repetitions > 0 && !(w.Repetitions > 5 && w.Easiness > 2.3 && w.Interval > 21));
-        var dueToday = await db.Words.CountAsync(w =>
-            w.UserId == UserId && w.DueDate <= today);
+        var masteredWords = await db.UserWordProgress.CountAsync(p =>
+            p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21);
+        var inProgressWords = await db.UserWordProgress.CountAsync(p =>
+            p.UserId == UserId && p.Repetitions > 0 && !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21));
+        var dueToday = await db.UserWordProgress.CountAsync(p =>
+            p.UserId == UserId && p.DueDate <= today);
 
         var achievements = await db.Achievements
             .Where(a => a.UserId == UserId)
@@ -88,7 +87,7 @@ public class StatsController(AppDbContext db) : ControllerBase
         var weekAgo = today.AddDays(-6);
 
         var logs = await db.ReviewLogs
-            .Where(r => r.Word.UserId == UserId && r.ReviewedAt >= weekAgo)
+            .Where(r => r.UserId == UserId && r.ReviewedAt >= weekAgo)
             .Select(r => new { r.ReviewedAt.Date, r.Result })
             .ToListAsync();
 

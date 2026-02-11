@@ -27,8 +27,14 @@ public class WordsController(AppDbContext db) : ControllerBase
         var words = await query.OrderBy(w => w.Number)
             .Select(w => new WordDto(
                 w.Id, w.Number, w.Language.ToString(), w.Term, w.Translation,
-                w.PartOfSpeech, w.Notes, w.Easiness, w.Interval, w.Repetitions,
-                w.DueDate, w.LastReviewed, w.TimesReviewed))
+                w.PartOfSpeech,
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Notes).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Easiness).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Interval).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Repetitions).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.DueDate).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.LastReviewed).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.TimesReviewed).FirstOrDefault()))
             .ToListAsync();
 
         return Ok(words);
@@ -37,13 +43,22 @@ public class WordsController(AppDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WordDto>> Get(Guid id)
     {
-        var w = await db.Words.FirstOrDefaultAsync(w => w.Id == id && w.UserId == UserId);
+        var w = await db.Words
+            .Where(w => w.Id == id && w.UserId == UserId)
+            .Select(w => new WordDto(
+                w.Id, w.Number, w.Language.ToString(), w.Term, w.Translation,
+                w.PartOfSpeech,
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Notes).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Easiness).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Interval).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.Repetitions).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.DueDate).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.LastReviewed).FirstOrDefault(),
+                w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.TimesReviewed).FirstOrDefault()))
+            .FirstOrDefaultAsync();
         if (w == null) return NotFound();
 
-        return Ok(new WordDto(
-            w.Id, w.Number, w.Language.ToString(), w.Term, w.Translation,
-            w.PartOfSpeech, w.Notes, w.Easiness, w.Interval, w.Repetitions,
-            w.DueDate, w.LastReviewed, w.TimesReviewed));
+        return Ok(w);
     }
 
     [HttpPost]
@@ -65,17 +80,25 @@ public class WordsController(AppDbContext db) : ControllerBase
             Language = lang,
             Term = request.Term,
             Translation = request.Translation,
-            PartOfSpeech = request.PartOfSpeech,
-            Notes = request.Notes
+            PartOfSpeech = request.PartOfSpeech
         };
 
         db.Words.Add(word);
+
+        var progress = new UserWordProgress
+        {
+            UserId = UserId,
+            WordId = word.Id,
+            Notes = request.Notes
+        };
+        db.UserWordProgress.Add(progress);
+
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(Get), new { id = word.Id }, new WordDto(
             word.Id, word.Number, word.Language.ToString(), word.Term, word.Translation,
-            word.PartOfSpeech, word.Notes, word.Easiness, word.Interval, word.Repetitions,
-            word.DueDate, word.LastReviewed, word.TimesReviewed));
+            word.PartOfSpeech, progress.Notes, progress.Easiness, progress.Interval,
+            progress.Repetitions, progress.DueDate, progress.LastReviewed, progress.TimesReviewed));
     }
 
     [HttpPut("{id:guid}")]
@@ -96,14 +119,28 @@ public class WordsController(AppDbContext db) : ControllerBase
         if (request.Term != null) word.Term = request.Term;
         if (request.Translation != null) word.Translation = request.Translation;
         if (request.PartOfSpeech != null) word.PartOfSpeech = request.PartOfSpeech;
-        if (request.Notes != null) word.Notes = request.Notes;
+
+        if (request.Notes != null)
+        {
+            var progress = await db.UserWordProgress
+                .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == id);
+            if (progress == null)
+            {
+                progress = new UserWordProgress { UserId = UserId, WordId = id };
+                db.UserWordProgress.Add(progress);
+            }
+            progress.Notes = request.Notes;
+        }
 
         await db.SaveChangesAsync();
 
+        var p = await db.UserWordProgress
+            .FirstOrDefaultAsync(p => p.UserId == UserId && p.WordId == id);
+
         return Ok(new WordDto(
             word.Id, word.Number, word.Language.ToString(), word.Term, word.Translation,
-            word.PartOfSpeech, word.Notes, word.Easiness, word.Interval, word.Repetitions,
-            word.DueDate, word.LastReviewed, word.TimesReviewed));
+            word.PartOfSpeech, p?.Notes, p?.Easiness ?? 2.5, p?.Interval ?? 0,
+            p?.Repetitions ?? 0, p?.DueDate ?? DateTime.UtcNow.Date, p?.LastReviewed, p?.TimesReviewed ?? 0));
     }
 
     [HttpDelete("{id:guid}")]

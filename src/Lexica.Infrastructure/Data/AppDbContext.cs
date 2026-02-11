@@ -12,6 +12,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Word> Words => Set<Word>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupWord> GroupWords => Set<GroupWord>();
+    public DbSet<Set> Sets => Set<Set>();
+    public DbSet<SetWord> SetWords => Set<SetWord>();
+    public DbSet<SetSubscription> SetSubscriptions => Set<SetSubscription>();
+    public DbSet<UserWordProgress> UserWordProgress => Set<UserWordProgress>();
     public DbSet<ReviewLog> ReviewLogs => Set<ReviewLog>();
     public DbSet<Achievement> Achievements => Set<Achievement>();
 
@@ -59,6 +63,39 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         {
             e.HasKey(a => a.Id);
             e.HasOne(a => a.User).WithMany(u => u.Achievements).HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Set
+        builder.Entity<Set>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(s => s.Language).HasConversion<string>();
+            e.Property(s => s.DefaultDirection).HasConversion<string>();
+        });
+
+        // SetWord (many-to-many)
+        builder.Entity<SetWord>(e =>
+        {
+            e.HasKey(sw => new { sw.SetId, sw.WordId });
+            e.HasOne(sw => sw.Set).WithMany(s => s.SetWords).HasForeignKey(sw => sw.SetId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(sw => sw.Word).WithMany(w => w.SetWords).HasForeignKey(sw => sw.WordId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // SetSubscription
+        builder.Entity<SetSubscription>(e =>
+        {
+            e.HasKey(ss => new { ss.UserId, ss.SetId });
+            e.HasOne(ss => ss.User).WithMany(u => u.SetSubscriptions).HasForeignKey(ss => ss.UserId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(ss => ss.Set).WithMany(s => s.Subscriptions).HasForeignKey(ss => ss.SetId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // UserWordProgress
+        builder.Entity<UserWordProgress>(e =>
+        {
+            e.HasKey(p => new { p.UserId, p.WordId });
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(p => p.Word).WithMany(w => w.UserProgress).HasForeignKey(p => p.WordId).OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

@@ -4,6 +4,8 @@ namespace Lexica.Core.Entities;
 
 public class ApplicationUser : IdentityUser<Guid>
 {
+    public string? DisplayName { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public int Xp { get; set; }
     public int Level { get; set; } = 1;
     public int Streak { get; set; }
@@ -15,4 +17,5 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<Word> Words { get; set; } = [];
     public ICollection<Group> Groups { get; set; } = [];
     public ICollection<Achievement> Achievements { get; set; } = [];
+    public ICollection<SetSubscription> SetSubscriptions { get; set; } = [];
 }

@@ -25,6 +25,7 @@ public class ExcelExportService(AppDbContext db)
     {
         var words = await db.Words
             .Where(w => w.UserId == userId)
+            .Include(w => w.UserProgress)
             .Include(w => w.GroupWords)
                 .ThenInclude(gw => gw.Group)
             .OrderBy(w => w.Language)
@@ -38,17 +39,18 @@ public class ExcelExportService(AppDbContext db)
         for (int i = 0; i < words.Count; i++)
         {
             var w = words[i];
+            var p = w.UserProgress.FirstOrDefault(p => p.UserId == userId);
             var row = i + 2;
             worksheet.Cell(row, 1).Value = w.Number;
             worksheet.Cell(row, 2).Value = w.Language.ToString();
             worksheet.Cell(row, 3).Value = w.Term;
             worksheet.Cell(row, 4).Value = w.Translation;
             worksheet.Cell(row, 5).Value = w.PartOfSpeech ?? "";
-            worksheet.Cell(row, 6).Value = w.Notes ?? "";
-            worksheet.Cell(row, 7).Value = w.Easiness;
-            worksheet.Cell(row, 8).Value = w.Interval;
-            worksheet.Cell(row, 9).Value = w.Repetitions;
-            worksheet.Cell(row, 10).Value = w.DueDate.ToString("yyyy-MM-dd");
+            worksheet.Cell(row, 6).Value = p?.Notes ?? "";
+            worksheet.Cell(row, 7).Value = p?.Easiness ?? 2.5;
+            worksheet.Cell(row, 8).Value = p?.Interval ?? 0;
+            worksheet.Cell(row, 9).Value = p?.Repetitions ?? 0;
+            worksheet.Cell(row, 10).Value = (p?.DueDate ?? DateTime.UtcNow.Date).ToString("yyyy-MM-dd");
             worksheet.Cell(row, 11).Value = w.GroupWords.FirstOrDefault()?.Group?.Name ?? "";
         }
 

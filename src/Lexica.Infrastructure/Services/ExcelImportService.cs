@@ -104,11 +104,19 @@ public class ExcelImportService(AppDbContext db)
                     existing.Term = row.Term;
                     existing.Translation = row.Translation;
                     existing.PartOfSpeech = row.PartOfSpeech;
-                    existing.Notes = row.Notes;
-                    if (row.Easiness.HasValue) existing.Easiness = row.Easiness.Value;
-                    if (row.Interval.HasValue) existing.Interval = row.Interval.Value;
-                    if (row.Repetitions.HasValue) existing.Repetitions = row.Repetitions.Value;
-                    if (row.DueDate.HasValue) existing.DueDate = row.DueDate.Value;
+
+                    var progress = await db.UserWordProgress
+                        .FirstOrDefaultAsync(p => p.UserId == userId && p.WordId == existing.Id);
+                    if (progress == null)
+                    {
+                        progress = new UserWordProgress { UserId = userId, WordId = existing.Id };
+                        db.UserWordProgress.Add(progress);
+                    }
+                    progress.Notes = row.Notes;
+                    if (row.Easiness.HasValue) progress.Easiness = row.Easiness.Value;
+                    if (row.Interval.HasValue) progress.Interval = row.Interval.Value;
+                    if (row.Repetitions.HasValue) progress.Repetitions = row.Repetitions.Value;
+                    if (row.DueDate.HasValue) progress.DueDate = row.DueDate.Value;
                     updated++;
                 }
                 else
@@ -126,14 +134,21 @@ public class ExcelImportService(AppDbContext db)
                 Language = lang,
                 Term = row.Term,
                 Translation = row.Translation,
-                PartOfSpeech = row.PartOfSpeech,
+                PartOfSpeech = row.PartOfSpeech
+            };
+            db.Words.Add(word);
+
+            var wordProgress = new UserWordProgress
+            {
+                UserId = userId,
+                WordId = word.Id,
                 Notes = row.Notes,
                 Easiness = row.Easiness ?? 2.5,
                 Interval = row.Interval ?? 0,
                 Repetitions = row.Repetitions ?? 0,
                 DueDate = row.DueDate ?? DateTime.UtcNow.Date
             };
-            db.Words.Add(word);
+            db.UserWordProgress.Add(wordProgress);
 
             // Handle group assignment
             if (!string.IsNullOrEmpty(row.Group))
