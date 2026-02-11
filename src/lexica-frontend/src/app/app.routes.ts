@@ -18,6 +18,10 @@ export const routes: Routes = [
       { path: 'import', loadComponent: () => import('./features/import/import.component').then(m => m.ImportComponent) },
       { path: 'session', loadComponent: () => import('./features/session/session-start.component').then(m => m.SessionStartComponent) },
       { path: 'session/play', loadComponent: () => import('./features/session/session-play.component').then(m => m.SessionPlayComponent) },
+      { path: 'profile', loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent) },
+      { path: 'sets', loadComponent: () => import('./features/sets/set-list.component').then(m => m.SetListComponent) },
+      { path: 'sets/new', loadComponent: () => import('./features/sets/set-detail.component').then(m => m.SetDetailComponent), data: { id: 'new' } },
+      { path: 'sets/:id', loadComponent: () => import('./features/sets/set-detail.component').then(m => m.SetDetailComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

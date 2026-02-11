@@ -2,19 +2,22 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { ApiService, DayStatsDto, GroupDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
-import { GroupItemComponent } from '../../shared/components/group-item.component';
+import { ApiService, DayStatsDto, SetDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
+import { SetItemComponent } from '../../shared/components/set-item.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, GroupItemComponent],
+  imports: [CommonModule, RouterLink, SetItemComponent],
   template: `
     <div class="home-container">
       <header class="home-header">
         <div class="header-top">
           <h1>Lexica</h1>
-          <button class="logout-btn" (click)="logout()">Uitloggen</button>
+          <div class="header-actions">
+            <a routerLink="/profile" class="profile-btn"><i class="fa-solid fa-user"></i></a>
+            <button class="logout-btn" (click)="logout()">Uitloggen</button>
+          </div>
         </div>
         @if (stats) {
           <div class="header-stats">
@@ -114,10 +117,10 @@ import { GroupItemComponent } from '../../shared/components/group-item.component
               <span class="action-title">Woordenlijst</span>
               <span class="action-desc">Bekijk en beheer woorden</span>
             </a>
-            <a routerLink="/groups" class="action-card">
-              <span class="action-icon"><i class="fa-solid fa-folder"></i></span>
-              <span class="action-title">Groepen</span>
-              <span class="action-desc">Organiseer vocabulaire</span>
+            <a routerLink="/sets" class="action-card">
+              <span class="action-icon"><i class="fa-solid fa-layer-group"></i></span>
+              <span class="action-title">Sets</span>
+              <span class="action-desc">Organiseer en deel sets</span>
             </a>
             <a routerLink="/import" class="action-card">
               <span class="action-icon"><i class="fa-solid fa-file-import"></i></span>
@@ -127,11 +130,14 @@ import { GroupItemComponent } from '../../shared/components/group-item.component
           </div>
         </section>
 
-        @if (groups.length > 0) {
-          <section class="groups-overview">
-            <h2>Jouw groepen</h2>
-            @for (group of groups; track group.id) {
-              <app-group-item [group]="group"></app-group-item>
+        @if (sets.length > 0) {
+          <section class="sets-overview">
+            <div class="section-header">
+              <h2>Jouw sets</h2>
+              <a routerLink="/sets" class="see-all">Alles bekijken</a>
+            </div>
+            @for (set of sets; track set.id) {
+              <app-set-item [set]="set"></app-set-item>
             }
           </section>
         }
@@ -149,6 +155,16 @@ import { GroupItemComponent } from '../../shared/components/group-item.component
 
     .header-top { display: flex; justify-content: space-between; align-items: center; }
     h1 { margin: 0; font-size: 1.5rem; }
+
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+    .profile-btn {
+      background: rgba(255,255,255,0.15); color: white; border: none;
+      width: 36px; height: 36px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; text-decoration: none;
+      font-size: 0.9rem;
+      &:hover { background: rgba(255,255,255,0.25); }
+    }
 
     .logout-btn {
       background: rgba(255,255,255,0.15); color: white; border: none;
@@ -277,11 +293,23 @@ import { GroupItemComponent } from '../../shared/components/group-item.component
     .dot-known { background: #f59e0b; }
     .dot-unknown { background: #f44336; }
 
-    .groups-overview { }
+    .sets-overview { }
+
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-header h2 { margin: 0; }
+
+    .see-all {
+      font-size: 0.85rem; color: #0f3460; text-decoration: none; font-weight: 600;
+      &:hover { text-decoration: underline; }
+    }
   `]
 })
 export class HomeComponent implements OnInit {
-  groups: GroupDto[] = [];
+  sets: SetDto[] = [];
   stats: UserStatsDto | null = null;
   weeklyStats: WeeklyStatsDto | null = null;
   pausedSession: { remaining: number; totalWords: number } | null = null;
@@ -295,7 +323,7 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.api.getGroups().subscribe(groups => this.groups = groups);
+    this.api.getSets().subscribe(sets => this.sets = sets);
     this.api.getStats().subscribe(stats => this.stats = stats);
     this.api.getWeeklyStats().subscribe(ws => {
       this.weeklyStats = ws;
