@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, SetDto } from '../../core/services/api.service';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-session-start',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -16,6 +17,9 @@ import { ApiService, SetDto } from '../../core/services/api.service';
       </header>
 
       <div class="content">
+        @if (loadingSets) {
+          <app-loading message="Sets laden..."></app-loading>
+        } @else {
         <h2>Kies set(s)</h2>
         <div class="group-select">
           @for (set of sets; track set.id) {
@@ -55,6 +59,7 @@ import { ApiService, SetDto } from '../../core/services/api.service';
           (click)="startSession()">
           {{ loading ? 'Laden...' : 'Start sessie' }}
         </button>
+        }
       </div>
     </div>
   `,
@@ -139,6 +144,7 @@ export class SessionStartComponent implements OnInit {
   selectedSetIds = new Set<string>();
   direction = 'TargetToNl';
   sessionSize = 20;
+  loadingSets = true;
   loading = false;
 
   constructor(
@@ -153,7 +159,10 @@ export class SessionStartComponent implements OnInit {
       this.direction = prefs.direction ?? this.direction;
       this.sessionSize = prefs.sessionSize ?? this.sessionSize;
     }
-    this.api.getSets().subscribe(s => this.sets = s);
+    this.api.getSets().subscribe(s => {
+      this.sets = s;
+      this.loadingSets = false;
+    });
   }
 
   toggleSet(id: string) {

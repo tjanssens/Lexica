@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, WordDto } from '../../core/services/api.service';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-word-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -18,6 +19,9 @@ import { ApiService, WordDto } from '../../core/services/api.service';
         }
       </header>
 
+      @if (!word) {
+        <app-loading message="Woord laden..."></app-loading>
+      }
       @if (word) {
         <form (ngSubmit)="save()" class="form">
           <div class="form-group">

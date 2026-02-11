@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-import',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -50,9 +51,7 @@ import { environment } from '../../../environments/environment';
         }
 
         @if (step === 'loading') {
-          <div class="loading">
-            <p>Bestand verwerken...</p>
-          </div>
+          <app-loading message="Bestand verwerken..."></app-loading>
         }
 
         @if (step === 'preview') {

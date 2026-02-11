@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 interface SessionWord {
   wordId: string;
@@ -17,7 +18,7 @@ interface SessionWord {
 @Component({
   selector: 'app-session-play',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, LoadingComponent],
   template: `
     @if (completed) {
       <div class="completed-screen">
@@ -132,7 +133,9 @@ interface SessionWord {
       </div>
     }
     } @else {
-      <div class="loading">Sessie laden...</div>
+      <div class="loading">
+        <app-loading message="Sessie laden..."></app-loading>
+      </div>
     }
   `,
   styles: [`

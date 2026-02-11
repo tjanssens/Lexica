@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, UserProfileDto } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -16,6 +17,9 @@ import { AuthService } from '../../core/services/auth.service';
         <h1>Profiel</h1>
       </header>
 
+      @if (!profile) {
+        <app-loading message="Profiel laden..."></app-loading>
+      }
       @if (profile) {
         <div class="form">
           <!-- Profile picture -->

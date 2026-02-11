@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, SetDto, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
+import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-set-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent],
+  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -21,6 +22,9 @@ import { WordItemComponent } from '../../shared/components/word-item.component';
       </header>
 
       <div class="content">
+        @if (!isNew && !set) {
+          <app-loading message="Set laden..."></app-loading>
+        }
         @if (isNew) {
           <form (ngSubmit)="createSet()" class="form">
             <div class="form-group">
