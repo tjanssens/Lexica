@@ -131,12 +131,51 @@ public class SessionsController(AppDbContext db) : ControllerBase
             _ => 0
         };
 
-        // Update user XP
+        // Update user XP and streak
         var user = await db.Users.FindAsync(UserId);
         if (user != null)
         {
             user.Xp += xp;
             user.Level = CalculateLevel(user.Xp);
+            
+            // Update streak
+            var today = DateTime.UtcNow.Date;
+            var lastSession = user.LastSessionDate;
+            
+            if (lastSession == null || lastSession.Value.Date < today)
+            {
+                // First review of today
+                if (lastSession == null)
+                {
+                    // First session ever
+                    user.Streak = 1;
+                    user.LastSessionDate = today;
+                }
+                else if (lastSession.Value.Date == today.AddDays(-1))
+                {
+                    // Consecutive day - increment streak
+                    user.Streak++;
+                    user.LastSessionDate = today;
+                }
+                else if (lastSession.Value.Date < today.AddDays(-1))
+                {
+                    // Missed a day - check for streak freeze
+                    if (user.StreakFreezeAvailable && lastSession.Value.Date == today.AddDays(-2))
+                    {
+                        // Use streak freeze (1 day gap allowed)
+                        user.Streak++;
+                        user.StreakFreezeAvailable = false;
+                        user.LastSessionDate = today;
+                    }
+                    else
+                    {
+                        // Streak broken - reset to 1
+                        user.Streak = 1;
+                        user.LastSessionDate = today;
+                    }
+                }
+            }
+            // else: already reviewed today, no streak update needed
         }
 
         await db.SaveChangesAsync();
