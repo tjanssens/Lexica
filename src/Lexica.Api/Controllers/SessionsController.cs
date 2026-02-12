@@ -156,6 +156,12 @@ public class SessionsController(AppDbContext db) : ControllerBase
                     // Consecutive day - increment streak
                     user.Streak++;
                     user.LastSessionDate = today;
+                    
+                    // Award streak freeze every 7 days
+                    if (user.Streak % 7 == 0)
+                    {
+                        user.StreakFreezeAvailable = true;
+                    }
                 }
                 else if (lastSession.Value.Date < today.AddDays(-1))
                 {
