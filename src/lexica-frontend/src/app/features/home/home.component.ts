@@ -97,79 +97,77 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </div>
         </section>
 
-        @if (errors.weekly) {
-          <section class="weekly-overview section-error">
-            <h2>Deze week</h2>
-            <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Weekoverzicht kon niet geladen worden.</p>
-          </section>
-        } @else if (weeklyStats) {
-          <section class="weekly-overview">
-            <h2>Deze week</h2>
-            <div class="week-chart">
-              @for (day of weeklyStats.days; track day.date) {
-                <div class="day-col">
-                  <div class="bar-container">
-                    @if (day.totalReviews > 0) {
-                      <div class="stacked-bar" [style.height.%]="barHeight(day)">
-                        <div class="seg-easy" [style.flex-grow]="day.easy"></div>
-                        <div class="seg-known" [style.flex-grow]="day.known"></div>
-                        <div class="seg-unknown" [style.flex-grow]="day.unknown"></div>
-                      </div>
-                    } @else {
-                      <div class="bar-empty"></div>
-                    }
-                  </div>
-                  <span class="day-label">{{ dayLabel(day) }}</span>
-                  <span class="day-count">{{ day.totalReviews || '' }}</span>
-                </div>
-              }
-            </div>
-            <div class="week-legend">
-              <span class="legend-item"><span class="dot dot-easy"></span> Makkelijk</span>
-              <span class="legend-item"><span class="dot dot-known"></span> Gekend</span>
-              <span class="legend-item"><span class="dot dot-unknown"></span> Fout</span>
-            </div>
-          </section>
-        }
+        <section class="overview">
+          <div class="overview-tabs" role="tablist">
+            <button role="tab" [class.active]="view === 'week'" [attr.aria-selected]="view === 'week'" (click)="view = 'week'">Deze week</button>
+            <button role="tab" [class.active]="view === 'month'" [attr.aria-selected]="view === 'month'" (click)="view = 'month'">Deze maand</button>
+          </div>
 
-        @if (errors.monthly && !monthlyStats) {
-          <section class="monthly-overview section-error">
-            <h2>Maandoverzicht</h2>
-            <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Maandoverzicht kon niet geladen worden.</p>
-          </section>
-        } @else if (monthlyStats) {
-          <section class="monthly-overview">
-            <div class="month-header">
-              <button class="month-nav" (click)="changeMonth(-1)" aria-label="Vorige maand">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-              <h2>{{ monthLabel(monthlyStats) }}</h2>
-              <button class="month-nav" (click)="changeMonth(1)" [disabled]="isCurrentMonth()" aria-label="Volgende maand">
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
-            </div>
-            <div class="month-grid">
-              @for (label of weekdayLabels; track label) {
-                <div class="weekday-label">{{ label }}</div>
-              }
-              @for (i of leadingBlanks(monthlyStats); track i) {
-                <div class="month-cell blank"></div>
-              }
-              @for (day of monthlyStats.days; track day.date) {
-                <div class="month-cell"
-                     [style.background]="dayColor(day)"
-                     [title]="dayTooltip(day)">
-                  <span class="cell-num">{{ dayOfMonth(day) }}</span>
-                </div>
-              }
-            </div>
-            <div class="month-gradient-legend">
-              <span class="legend-label">Fout</span>
-              <span class="gradient-bar"></span>
-              <span class="legend-label">Makkelijk</span>
-            </div>
-          </section>
-        }
+          @if (view === 'week') {
+            @if (errors.weekly) {
+              <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Weekoverzicht kon niet geladen worden.</p>
+            } @else if (weeklyStats) {
+              <div class="week-chart">
+                @for (day of weeklyStats.days; track day.date) {
+                  <div class="day-col">
+                    <div class="bar-container">
+                      @if (day.totalReviews > 0) {
+                        <div class="stacked-bar" [style.height.%]="barHeight(day)">
+                          <div class="seg-easy" [style.flex-grow]="day.easy"></div>
+                          <div class="seg-known" [style.flex-grow]="day.known"></div>
+                          <div class="seg-unknown" [style.flex-grow]="day.unknown"></div>
+                        </div>
+                      } @else {
+                        <div class="bar-empty"></div>
+                      }
+                    </div>
+                    <span class="day-label">{{ dayLabel(day) }}</span>
+                    <span class="day-count">{{ day.totalReviews || '' }}</span>
+                  </div>
+                }
+              </div>
+              <div class="week-legend">
+                <span class="legend-item"><span class="dot dot-easy"></span> Makkelijk</span>
+                <span class="legend-item"><span class="dot dot-known"></span> Gekend</span>
+                <span class="legend-item"><span class="dot dot-unknown"></span> Fout</span>
+              </div>
+            }
+          } @else {
+            @if (errors.monthly && !monthlyStats) {
+              <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Maandoverzicht kon niet geladen worden.</p>
+            } @else if (monthlyStats) {
+              <div class="month-header">
+                <button class="month-nav" (click)="changeMonth(-1)" aria-label="Vorige maand">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <h2>{{ monthLabel(monthlyStats) }}</h2>
+                <button class="month-nav" (click)="changeMonth(1)" [disabled]="isCurrentMonth()" aria-label="Volgende maand">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+              <div class="month-grid">
+                @for (label of weekdayLabels; track label) {
+                  <div class="weekday-label">{{ label }}</div>
+                }
+                @for (i of leadingBlanks(monthlyStats); track i) {
+                  <div class="month-cell blank"></div>
+                }
+                @for (day of monthlyStats.days; track day.date) {
+                  <div class="month-cell"
+                       [style.background]="dayColor(day)"
+                       [title]="dayTooltip(day)">
+                    <span class="cell-num">{{ dayOfMonth(day) }}</span>
+                  </div>
+                }
+              </div>
+              <div class="week-legend">
+                <span class="legend-item"><span class="dot dot-easy"></span> Makkelijk</span>
+                <span class="legend-item"><span class="dot dot-known"></span> Gekend</span>
+                <span class="legend-item"><span class="dot dot-unknown"></span> Fout</span>
+              </div>
+            }
+          }
+        </section>
 
         <section class="actions">
           <h2>Aan de slag</h2>
@@ -330,9 +328,20 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .action-title { font-weight: 600; color: #1a1a2e; font-size: 0.9rem; }
     .action-desc { color: #888; font-size: 0.75rem; }
 
-    .weekly-overview {
+    .overview {
       background: white; border-radius: 12px; padding: 1.25rem;
       margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .overview-tabs {
+      display: flex; margin-bottom: 1rem;
+      background: #f0f0f0; border-radius: 8px; padding: 3px;
+      button {
+        flex: 1; background: transparent; border: none; cursor: pointer;
+        padding: 0.5rem; font-size: 0.85rem; color: #666; font-weight: 600;
+        border-radius: 6px;
+        &.active { background: white; color: #0f3460; }
+      }
     }
 
     .week-chart {
@@ -374,11 +383,6 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .dot-known { background: #f59e0b; }
     .dot-unknown { background: #f44336; }
 
-    .monthly-overview {
-      background: white; border-radius: 12px; padding: 1.25rem;
-      margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
     .month-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 0.75rem;
@@ -419,18 +423,6 @@ import { LoadingComponent } from '../../shared/components/loading.component';
       text-shadow: 0 1px 1px rgba(255,255,255,0.4);
     }
 
-    .month-gradient-legend {
-      display: flex; align-items: center; justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .gradient-bar {
-      flex: 0 0 120px; height: 8px; border-radius: 4px;
-      background: linear-gradient(to right, #f44336, #f59e0b, #4caf50);
-    }
-
-    .legend-label { font-size: 0.7rem; color: #888; }
-
     .sets-overview { }
 
     .section-header {
@@ -453,6 +445,7 @@ export class HomeComponent implements OnInit {
   monthlyStats: MonthlyStatsDto | null = null;
   pausedSession: { remaining: number; totalWords: number } | null = null;
   loading = true;
+  view: 'week' | 'month' = 'week';
 
   errors = {
     sets: false,
