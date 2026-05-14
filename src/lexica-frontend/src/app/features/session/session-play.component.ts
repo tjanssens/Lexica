@@ -422,6 +422,7 @@ export class SessionPlayComponent implements OnInit {
   flipped = false;
   swipeClass = '';
   direction = 'NlToTarget';
+  mode: 'quick' | 'intensive' = 'intensive';
   completed = false;
 
   // Stats
@@ -456,6 +457,7 @@ export class SessionPlayComponent implements OnInit {
       this.stack = paused.stack;
       this.reviewed = new Set<string>(paused.reviewed);
       this.direction = paused.direction;
+      this.mode = paused.mode ?? 'intensive';
       this.totalWords = paused.totalWords;
       this.knownCount = paused.knownCount;
       this.unknownCount = paused.unknownCount;
@@ -475,6 +477,7 @@ export class SessionPlayComponent implements OnInit {
 
     const config = JSON.parse(configStr);
     this.direction = config.direction;
+    this.mode = config.mode ?? 'intensive';
 
     this.http.post<SessionWord[]>(`${this.baseUrl}/next`, {
       setIds: config.setIds,
@@ -538,8 +541,13 @@ export class SessionPlayComponent implements OnInit {
     // Update counters
     if (result === 'Unknown') {
       this.unknownCount++;
-      // Put back in stack
-      this.stack.push(this.currentWord);
+      if (this.mode === 'intensive') {
+        // Put back in stack so it returns later in this session
+        this.stack.push(this.currentWord);
+      } else {
+        // Quick mode: one pass through everything, even wrong answers
+        this.reviewed.add(wordId);
+      }
     } else if (result === 'Known') {
       this.knownCount++;
       this.reviewed.add(wordId);
@@ -577,6 +585,7 @@ export class SessionPlayComponent implements OnInit {
       stack: this.stack,
       reviewed: Array.from(this.reviewed),
       direction: this.direction,
+      mode: this.mode,
       totalWords: this.totalWords,
       knownCount: this.knownCount,
       unknownCount: this.unknownCount,
