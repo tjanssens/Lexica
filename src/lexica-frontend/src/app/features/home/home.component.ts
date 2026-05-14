@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
-import { ApiService, DayStatsDto, SetDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
+import { ApiService, DayStatsDto, MonthlyStatsDto, SetDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
 
@@ -111,6 +111,40 @@ import { LoadingComponent } from '../../shared/components/loading.component';
               <span class="legend-item"><span class="dot dot-easy"></span> Makkelijk</span>
               <span class="legend-item"><span class="dot dot-known"></span> Gekend</span>
               <span class="legend-item"><span class="dot dot-unknown"></span> Fout</span>
+            </div>
+          </section>
+        }
+
+        @if (monthlyStats) {
+          <section class="monthly-overview">
+            <div class="month-header">
+              <button class="month-nav" (click)="changeMonth(-1)" aria-label="Vorige maand">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <h2>{{ monthLabel(monthlyStats) }}</h2>
+              <button class="month-nav" (click)="changeMonth(1)" [disabled]="isCurrentMonth()" aria-label="Volgende maand">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+            <div class="month-grid">
+              @for (label of weekdayLabels; track label) {
+                <div class="weekday-label">{{ label }}</div>
+              }
+              @for (i of leadingBlanks(monthlyStats); track i) {
+                <div class="month-cell blank"></div>
+              }
+              @for (day of monthlyStats.days; track day.date) {
+                <div class="month-cell"
+                     [style.background]="dayColor(day)"
+                     [title]="dayTooltip(day)">
+                  <span class="cell-num">{{ dayOfMonth(day) }}</span>
+                </div>
+              }
+            </div>
+            <div class="month-gradient-legend">
+              <span class="legend-label">Fout</span>
+              <span class="gradient-bar"></span>
+              <span class="legend-label">Makkelijk</span>
             </div>
           </section>
         }
@@ -307,6 +341,63 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .dot-known { background: #f59e0b; }
     .dot-unknown { background: #f44336; }
 
+    .monthly-overview {
+      background: white; border-radius: 12px; padding: 1.25rem;
+      margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .month-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .month-header h2 {
+      margin: 0; text-align: center; flex: 1; text-transform: capitalize;
+    }
+
+    .month-nav {
+      background: transparent; border: none; color: #0f3460;
+      width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+      font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+      &:hover:not(:disabled) { background: #f0f0f0; }
+      &:disabled { color: #ccc; cursor: not-allowed; }
+    }
+
+    .month-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .weekday-label {
+      font-size: 0.7rem; color: #888; text-align: center; padding: 0.25rem 0;
+    }
+
+    .month-cell {
+      aspect-ratio: 1; border-radius: 6px; background: #ececec;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+
+    .month-cell.blank { background: transparent; }
+
+    .cell-num {
+      font-size: 0.7rem; font-weight: 600;
+      color: rgba(0,0,0,0.55);
+      text-shadow: 0 1px 1px rgba(255,255,255,0.4);
+    }
+
+    .month-gradient-legend {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .gradient-bar {
+      flex: 0 0 120px; height: 8px; border-radius: 4px;
+      background: linear-gradient(to right, #f44336, #f59e0b, #4caf50);
+    }
+
+    .legend-label { font-size: 0.7rem; color: #888; }
+
     .sets-overview { }
 
     .section-header {
@@ -326,11 +417,18 @@ export class HomeComponent implements OnInit {
   sets: SetDto[] = [];
   stats: UserStatsDto | null = null;
   weeklyStats: WeeklyStatsDto | null = null;
+  monthlyStats: MonthlyStatsDto | null = null;
   pausedSession: { remaining: number; totalWords: number } | null = null;
   loading = true;
 
+  weekdayLabels = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+
   private maxReviews = 1;
   private dayNames = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+  private monthNames = [
+    'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+    'juli', 'augustus', 'september', 'oktober', 'november', 'december'
+  ];
 
   constructor(
     public auth: AuthService,
@@ -341,11 +439,13 @@ export class HomeComponent implements OnInit {
     forkJoin({
       sets: this.api.getSets(),
       stats: this.api.getStats(),
-      weeklyStats: this.api.getWeeklyStats()
+      weeklyStats: this.api.getWeeklyStats(),
+      monthlyStats: this.api.getMonthlyStats()
     }).subscribe(result => {
       this.sets = result.sets;
       this.stats = result.stats;
       this.weeklyStats = result.weeklyStats;
+      this.monthlyStats = result.monthlyStats;
       this.maxReviews = Math.max(1, ...result.weeklyStats.days.map(d => d.totalReviews));
       this.loading = false;
     });
@@ -367,6 +467,55 @@ export class HomeComponent implements OnInit {
   dayLabel(day: DayStatsDto): string {
     const d = new Date(day.date);
     return this.dayNames[d.getDay()];
+  }
+
+  monthLabel(m: MonthlyStatsDto): string {
+    return `${this.monthNames[m.month - 1]} ${m.year}`;
+  }
+
+  dayOfMonth(day: DayStatsDto): number {
+    return new Date(day.date).getDate();
+  }
+
+  leadingBlanks(m: MonthlyStatsDto): number[] {
+    const first = new Date(m.year, m.month - 1, 1);
+    // Monday-first: shift so Mon=0, Sun=6
+    const offset = (first.getDay() + 6) % 7;
+    return Array(offset).fill(0).map((_, i) => i);
+  }
+
+  dayColor(day: DayStatsDto): string {
+    if (day.totalReviews === 0) return '#ececec';
+    const total = day.easy + day.known + day.unknown;
+    if (total === 0) return '#ececec';
+    // RGB anchors: easy=green, known=orange, unknown=red
+    const easy = [76, 175, 80];
+    const known = [245, 158, 11];
+    const unknown = [244, 67, 54];
+    const r = (day.easy * easy[0] + day.known * known[0] + day.unknown * unknown[0]) / total;
+    const g = (day.easy * easy[1] + day.known * known[1] + day.unknown * unknown[1]) / total;
+    const b = (day.easy * easy[2] + day.known * known[2] + day.unknown * unknown[2]) / total;
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+  }
+
+  dayTooltip(day: DayStatsDto): string {
+    if (day.totalReviews === 0) return 'Geen reviews';
+    return `${day.totalReviews} reviews — ${day.easy} makkelijk, ${day.known} gekend, ${day.unknown} fout`;
+  }
+
+  isCurrentMonth(): boolean {
+    if (!this.monthlyStats) return true;
+    const now = new Date();
+    return this.monthlyStats.year === now.getFullYear() && this.monthlyStats.month === now.getMonth() + 1;
+  }
+
+  changeMonth(delta: number) {
+    if (!this.monthlyStats) return;
+    let y = this.monthlyStats.year;
+    let m = this.monthlyStats.month + delta;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    this.api.getMonthlyStats(y, m).subscribe(res => this.monthlyStats = res);
   }
 
   logout() {

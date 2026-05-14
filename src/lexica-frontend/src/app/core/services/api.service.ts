@@ -54,6 +54,13 @@ export class ApiService {
     return this.http.get<WeeklyStatsDto>(`${this.baseUrl}/stats/weekly`);
   }
 
+  getMonthlyStats(year?: number, month?: number): Observable<MonthlyStatsDto> {
+    let params = new HttpParams();
+    if (year !== undefined) params = params.set('year', year);
+    if (month !== undefined) params = params.set('month', month);
+    return this.http.get<MonthlyStatsDto>(`${this.baseUrl}/stats/monthly`, { params });
+  }
+
   // Profile
   getProfile(): Observable<UserProfileDto> {
     return this.http.get<UserProfileDto>(`${this.baseUrl}/profile`);
@@ -205,6 +212,12 @@ export interface DayStatsDto {
 export interface WeeklyStatsDto {
   days: DayStatsDto[];
   currentStreak: number;
+}
+
+export interface MonthlyStatsDto {
+  year: number;
+  month: number;
+  days: DayStatsDto[];
 }
 
 // Profile
