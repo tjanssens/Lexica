@@ -33,13 +33,16 @@ Je werkt op een Windows 11 machine thuis (gedraagt zich als een home server). De
 - GitHub Actions runner versie (gebruik de laatste release)
 - Runner service naam (default van runner installer is prima)
 
-**Reeds vastgelegd door de gebruiker:**
-- Publiek hostname: `lexica.jnssns.com`
+**Voorlopige defaults (laten bevestigen door de gebruiker in Taak 1):**
+- Publiek hostname: `lexica.jnssns.com` — voorstel, gebruiker bevestigt of geeft alternatief
+- App pad: `C:\apps\lexica`
+- Runner scope: repo-scoped (alleen `tjanssens/Lexica`)
+- Image zichtbaarheid op ghcr.io: **private** (veiliger; vraagt PAT op de server)
 
 **Decisions die je expliciet aan de gebruiker moet voorleggen (Taak 1):**
+- Bevestiging van het hostname (default: `lexica.jnssns.com`)
 - Naam van de bestaande Cloudflare Tunnel (output van `cloudflared tunnel list`)
-- Of de runner repo-scoped (alleen `tjanssens/Lexica`) of user-scoped moet zijn — aanbevolen: repo-scoped
-- Of de ghcr.io image **public** of **private** mag zijn. Private is veiliger; vraagt PAT op de server voor `docker login`. Public is eenvoudiger; image-naam blijft `ghcr.io/tjanssens/lexica`. Default aanbeveling: **private**.
+- Bevestiging of override van app-pad, runner-scope en image-zichtbaarheid
 
 ---
 
@@ -90,15 +93,16 @@ wsl --status 2>$null
 ```
 Noteer wat al bestaat — sla de bijbehorende install-stap over. Als WSL2 al actief is, kan Taak 2 grotendeels worden overgeslagen.
 
-- [ ] **Step 3: Vraag de gebruiker de open keuzes**
+- [ ] **Step 3: Bevestig defaults en vraag de tunnel-naam**
 
-Hostname is al vastgelegd: `lexica.jnssns.com`. Vraag de resterende keuzes:
-1. **Tunnel naam:** Geef de output van `cloudflared tunnel list` zodat ik weet welke tunnel ik moet aanpassen.
-2. **App pad:** Welke schijf/pad voor `.env` en compose-state? (default `C:\apps\lexica`)
-3. **Runner scope:** Alleen `tjanssens/Lexica` of breder?
-4. **Image zichtbaarheid op ghcr.io:** Public (eenvoudiger) of private (veiliger, vraagt PAT)?
+Toon de gebruiker de voorlopige defaults uit de "Context" sectie en vraag of er aanpassingen nodig zijn:
+1. **Hostname:** `lexica.jnssns.com` — akkoord of ander hostname?
+2. **App pad:** `C:\apps\lexica` — akkoord of andere schijf?
+3. **Runner scope:** repo-scoped (alleen `tjanssens/Lexica`) — akkoord of breder?
+4. **Image zichtbaarheid op ghcr.io:** private — akkoord of public (geen PAT nodig)?
+5. **Tunnel naam:** geef de output van `cloudflared tunnel list` zodat ik weet welke tunnel ik moet aanpassen.
 
-Bewaar de antwoorden — gebruik ze in volgende taken.
+Bewaar de uiteindelijke antwoorden — gebruik ze in volgende taken. Als de gebruiker een ander hostname kiest, vervang `lexica.jnssns.com` overal in de rest van het plan (Taak 8 ingress, Taak 9 verificatie).
 
 ---
 
