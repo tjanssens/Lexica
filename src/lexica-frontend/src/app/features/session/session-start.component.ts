@@ -38,6 +38,20 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           }
         </div>
 
+        <h2>Modus</h2>
+        <div class="mode-grid">
+          <button type="button" class="mode-card" [class.selected]="mode === 'quick'" (click)="mode = 'quick'">
+            <span class="mode-icon mode-icon-quick"><i class="fa-solid fa-bolt"></i></span>
+            <strong>Snel</strong>
+            <span class="mode-desc">Eén passage door alle woorden — fouten komen niet meer terug.</span>
+          </button>
+          <button type="button" class="mode-card" [class.selected]="mode === 'intensive'" (click)="mode = 'intensive'">
+            <span class="mode-icon mode-icon-intensive"><i class="fa-solid fa-bullseye"></i></span>
+            <strong>Intensief</strong>
+            <span class="mode-desc">Woorden komen terug tot je ze allemaal kent.</span>
+          </button>
+        </div>
+
         <div class="settings">
           <div class="setting">
             <label>Richting</label>
@@ -107,6 +121,31 @@ import { LoadingComponent } from '../../shared/components/loading.component';
       span { font-size: 0.8rem; color: #888; }
     }
 
+    .mode-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .mode-card {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      gap: 0.5rem; padding: 1rem 0.75rem;
+      background: white; border: 2px solid #e0e0e0; border-radius: 12px;
+      cursor: pointer; font-family: inherit; transition: border-color 0.2s, transform 0.15s;
+      &:hover:not(.selected) { border-color: #c0c0c0; }
+      &.selected { border-color: #0f3460; background: #f0f4ff; }
+      strong { font-size: 0.95rem; color: #1a1a2e; }
+    }
+
+    .mode-icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; color: white;
+    }
+    .mode-icon-quick { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .mode-icon-intensive { background: linear-gradient(135deg, #0f3460, #1a1a2e); }
+
+    .mode-desc { font-size: 0.75rem; color: #666; line-height: 1.3; }
+
     .settings { margin-bottom: 1.5rem; }
 
     .setting {
@@ -144,6 +183,7 @@ export class SessionStartComponent implements OnInit {
   selectedSetIds = new Set<string>();
   direction = 'TargetToNl';
   sessionSize = 20;
+  mode: 'quick' | 'intensive' = 'intensive';
   loadingSets = true;
   loading = false;
 
@@ -158,6 +198,7 @@ export class SessionStartComponent implements OnInit {
       const prefs = JSON.parse(saved);
       this.direction = prefs.direction ?? this.direction;
       this.sessionSize = prefs.sessionSize ?? this.sessionSize;
+      this.mode = prefs.mode ?? this.mode;
     }
     this.api.getSets().subscribe(s => {
       this.sets = s;
@@ -176,14 +217,16 @@ export class SessionStartComponent implements OnInit {
 
     localStorage.setItem('session_prefs', JSON.stringify({
       direction: this.direction,
-      sessionSize: this.sessionSize
+      sessionSize: this.sessionSize,
+      mode: this.mode
     }));
 
     // Store session config and navigate to play
     sessionStorage.setItem('session_config', JSON.stringify({
       setIds,
       direction: this.direction,
-      sessionSize: this.sessionSize
+      sessionSize: this.sessionSize,
+      mode: this.mode
     }));
 
     this.router.navigate(['/session/play']);
