@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService, DayStatsDto, MonthlyStatsDto, SetDto, UserStatsDto, WeeklyStatsDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
@@ -45,6 +46,17 @@ import { LoadingComponent } from '../../shared/components/loading.component';
         <app-loading message="Dashboard laden..."></app-loading>
       } @else {
         <main class="home-content">
+        @if (hasAnyError()) {
+          <div class="error-banner" role="alert">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="error-text">
+              <strong>Er ging iets mis bij het laden</strong>
+              <span>Sommige onderdelen konden niet geladen worden.</span>
+            </div>
+            <button (click)="loadDashboard()">Opnieuw</button>
+          </div>
+        }
+
         @if (pausedSession) {
           <a routerLink="/session/play" class="resume-cta">
             <div class="cta-icon"><i class="fa-solid fa-play"></i></div>
@@ -85,7 +97,12 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </div>
         </section>
 
-        @if (weeklyStats) {
+        @if (errors.weekly) {
+          <section class="weekly-overview section-error">
+            <h2>Deze week</h2>
+            <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Weekoverzicht kon niet geladen worden.</p>
+          </section>
+        } @else if (weeklyStats) {
           <section class="weekly-overview">
             <h2>Deze week</h2>
             <div class="week-chart">
@@ -115,7 +132,12 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </section>
         }
 
-        @if (monthlyStats) {
+        @if (errors.monthly && !monthlyStats) {
+          <section class="monthly-overview section-error">
+            <h2>Maandoverzicht</h2>
+            <p style="margin:0;color:#8a1f1f;font-size:0.85rem">Maandoverzicht kon niet geladen worden.</p>
+          </section>
+        } @else if (monthlyStats) {
           <section class="monthly-overview">
             <div class="month-header">
               <button class="month-nav" (click)="changeMonth(-1)" aria-label="Vorige maand">
@@ -234,6 +256,17 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .level-num { font-size: 0.8rem; opacity: 0.7; }
 
     .home-content { padding: 1.5rem; max-width: 600px; margin: 0 auto; }
+
+    .error-banner {
+      display: flex; align-items: center; gap: 0.75rem; color: #8a1f1f;
+      background: #fff4f4; border: 1px solid #f5c2c2;
+      border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1rem;
+      .error-text { flex: 1; display: flex; flex-direction: column; font-size: 0.8rem; }
+      button {
+        background: #b91c1c; color: white; border: none; border-radius: 8px;
+        padding: 0.4rem 0.85rem; font-size: 0.8rem; cursor: pointer;
+      }
+    }
 
     .resume-cta {
       display: flex; align-items: center; gap: 1rem;
@@ -421,6 +454,13 @@ export class HomeComponent implements OnInit {
   pausedSession: { remaining: number; totalWords: number } | null = null;
   loading = true;
 
+  errors = {
+    sets: false,
+    stats: false,
+    weekly: false,
+    monthly: false
+  };
+
   weekdayLabels = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
 
   private maxReviews = 1;
@@ -436,28 +476,52 @@ export class HomeComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    forkJoin({
-      sets: this.api.getSets(),
-      stats: this.api.getStats(),
-      weeklyStats: this.api.getWeeklyStats(),
-      monthlyStats: this.api.getMonthlyStats()
-    }).subscribe(result => {
-      this.sets = result.sets;
-      this.stats = result.stats;
-      this.weeklyStats = result.weeklyStats;
-      this.monthlyStats = result.monthlyStats;
-      this.maxReviews = Math.max(1, ...result.weeklyStats.days.map(d => d.totalReviews));
-      this.loading = false;
-    });
+    this.loadDashboard();
 
     const pausedStr = sessionStorage.getItem('session_paused');
     if (pausedStr) {
-      const paused = JSON.parse(pausedStr);
-      this.pausedSession = {
-        remaining: paused.stack.length,
-        totalWords: paused.totalWords
-      };
+      try {
+        const paused = JSON.parse(pausedStr);
+        this.pausedSession = {
+          remaining: paused.stack.length,
+          totalWords: paused.totalWords
+        };
+      } catch {
+        sessionStorage.removeItem('session_paused');
+      }
     }
+  }
+
+  loadDashboard() {
+    this.loading = true;
+    this.errors = { sets: false, stats: false, weekly: false, monthly: false };
+
+    forkJoin({
+      sets: this.api.getSets().pipe(catchError(err => { this.errors.sets = true; console.error('getSets failed', err); return of<SetDto[]>([]); })),
+      stats: this.api.getStats().pipe(catchError(err => { this.errors.stats = true; console.error('getStats failed', err); return of<UserStatsDto | null>(null); })),
+      weeklyStats: this.api.getWeeklyStats().pipe(catchError(err => { this.errors.weekly = true; console.error('getWeeklyStats failed', err); return of<WeeklyStatsDto | null>(null); })),
+      monthlyStats: this.api.getMonthlyStats().pipe(catchError(err => { this.errors.monthly = true; console.error('getMonthlyStats failed', err); return of<MonthlyStatsDto | null>(null); }))
+    }).subscribe({
+      next: result => {
+        this.sets = result.sets;
+        this.stats = result.stats;
+        this.weeklyStats = result.weeklyStats;
+        this.monthlyStats = result.monthlyStats;
+        this.maxReviews = result.weeklyStats
+          ? Math.max(1, ...result.weeklyStats.days.map(d => d.totalReviews))
+          : 1;
+        this.loading = false;
+      },
+      error: err => {
+        console.error('Dashboard load failed', err);
+        this.errors = { sets: true, stats: true, weekly: true, monthly: true };
+        this.loading = false;
+      }
+    });
+  }
+
+  hasAnyError(): boolean {
+    return this.errors.sets || this.errors.stats || this.errors.weekly || this.errors.monthly;
   }
 
   barHeight(day: DayStatsDto): number {
@@ -515,7 +579,14 @@ export class HomeComponent implements OnInit {
     let m = this.monthlyStats.month + delta;
     if (m < 1) { m = 12; y--; }
     if (m > 12) { m = 1; y++; }
-    this.api.getMonthlyStats(y, m).subscribe(res => this.monthlyStats = res);
+    this.errors.monthly = false;
+    this.api.getMonthlyStats(y, m).subscribe({
+      next: res => this.monthlyStats = res,
+      error: err => {
+        console.error('getMonthlyStats failed', err);
+        this.errors.monthly = true;
+      }
+    });
   }
 
   logout() {

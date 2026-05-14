@@ -126,12 +126,13 @@ public class StatsController(AppDbContext db) : ControllerBase
 
         if (m < 1 || m > 12) return BadRequest("Invalid month");
 
-        var firstDay = new DateTime(y, m, 1);
+        var firstDay = new DateTime(y, m, 1, 0, 0, 0, DateTimeKind.Utc);
         var daysInMonth = DateTime.DaysInMonth(y, m);
         var lastDay = firstDay.AddDays(daysInMonth - 1);
+        var nextMonth = firstDay.AddDays(daysInMonth);
 
         var logs = await db.ReviewLogs
-            .Where(r => r.UserId == UserId && r.ReviewedAt >= firstDay && r.ReviewedAt < firstDay.AddDays(daysInMonth))
+            .Where(r => r.UserId == UserId && r.ReviewedAt >= firstDay && r.ReviewedAt < nextMonth)
             .Select(r => new { r.ReviewedAt.Date, r.Result })
             .ToListAsync();
 
