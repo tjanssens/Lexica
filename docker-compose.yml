@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lexica-db
+    environment:
+      POSTGRES_DB: lexica
+      POSTGRES_USER: lexica
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD ontbreekt in .env}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lexica -d lexica"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  api:
+    # In productie pullt de runner deze image van ghcr.io.
+    # Lokaal kun je `docker compose build` draaien om dezelfde tag lokaal te bouwen.
+    image: ${LEXICA_IMAGE:-ghcr.io/tjanssens/lexica:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lexica-api
+    environment:
+      # Development zodat UseHttpsRedirection geen redirect-loops geeft op http://localhost.
+      # Voor echte productie achter Cloudflare Tunnel: ForwardedHeaders middleware aan + Production.
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=lexica;Username=lexica;Password=${DB_PASSWORD}"
+      Jwt__Issuer: "Lexica"
+      Jwt__Audience: "LexicaApp"
+      Jwt__Key: "${JWT_KEY:?JWT_KEY ontbreekt in .env}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

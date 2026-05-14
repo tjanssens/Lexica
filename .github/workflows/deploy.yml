@@ -1,4 +1,4 @@
-name: Build and Deploy to Azure
+name: Build and Deploy to Home Server
 
 on:
   push:
@@ -6,56 +6,115 @@ on:
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '20.x'
-  AZURE_WEBAPP_NAME: 'lexica'
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/lexica
 
 jobs:
-  build-and-deploy:
+  build-push:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: src/lexica-frontend/package-lock.json
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install frontend dependencies
-      run: npm ci
-      working-directory: src/lexica-frontend
+      - name: Compute tags
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "tag=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          {
+            echo "tags<<EOF"
+            echo "${{ env.IMAGE_NAME }}:latest"
+            echo "${{ env.IMAGE_NAME }}:${SHORT_SHA}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
-    - name: Build Angular app
-      run: npm run build -- --configuration production
-      working-directory: src/lexica-frontend
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
-    - name: Restore .NET dependencies
-      run: dotnet restore Lexica.sln
+  deploy:
+    needs: build-push
+    runs-on: [self-hosted, Windows, X64, lexica]
+    steps:
+      - name: Checkout (voor compose file)
+        uses: actions/checkout@v4
 
-    - name: Publish .NET app
-      run: dotnet publish src/Lexica.Api/Lexica.Api.csproj -c Release -o ./publish
+      - name: Set image tag in environment
+        shell: pwsh
+        run: |
+          $env:LEXICA_IMAGE = "${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image-tag }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "LEXICA_IMAGE=$env:LEXICA_IMAGE"
 
-    - name: Copy Angular build to wwwroot
-      run: |
-        mkdir -p ./publish/wwwroot
-        cp -r src/lexica-frontend/dist/lexica-frontend/browser/* ./publish/wwwroot/
+      - name: Pull image
+        shell: pwsh
+        env:
+          LEXICA_IMAGE: ${{ env.LEXICA_IMAGE }}
+        run: |
+          docker pull $env:LEXICA_IMAGE
+          if ($LASTEXITCODE -ne 0) { throw "docker pull failed" }
 
-    - name: Login to Azure
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy with compose
+        shell: pwsh
+        env:
+          LEXICA_IMAGE: ${{ env.LEXICA_IMAGE }}
+        run: |
+          $appRoot = "C:\apps\lexica"
+          $envFile = Join-Path $appRoot ".env"
 
-    - name: Deploy to Azure Web App
-      run: |
-        cd ./publish
-        zip -r ../app.zip .
-        cd ..
-        az webapp deploy --resource-group rg-lexica --name ${{ env.AZURE_WEBAPP_NAME }} --src-path app.zip --type zip
+          # Kopieer de compose-file naar de app-root voor handmatige acties (restart, rollback)
+          Copy-Item docker-compose.yml -Destination $appRoot -Force
+
+          # Overschrijf LEXICA_IMAGE in .env zodat compose dezelfde tag gebruikt bij toekomstige `up`
+          $existing = Get-Content $envFile | Where-Object { -not $_.StartsWith("LEXICA_IMAGE=") }
+          $new = $existing + "LEXICA_IMAGE=$env:LEXICA_IMAGE"
+          $content = ($new -join "`n") + "`n"
+          [System.IO.File]::WriteAllText($envFile, $content, (New-Object System.Text.UTF8Encoding $false))
+
+          docker compose --env-file $envFile -f (Join-Path $appRoot "docker-compose.yml") up -d --no-build --remove-orphans
+          if ($LASTEXITCODE -ne 0) { throw "docker compose up failed" }
+
+      - name: Health check
+        shell: pwsh
+        run: |
+          $maxAttempts = 24
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            try {
+              $r = Invoke-WebRequest -Uri "http://localhost:8080/" -UseBasicParsing -TimeoutSec 5
+              if ($r.StatusCode -lt 500) { Write-Host "Healthy (HTTP $($r.StatusCode))"; exit 0 }
+            } catch { Write-Host "Attempt $i/$maxAttempts not ready: $($_.Exception.Message)" }
+            Start-Sleep -Seconds 5
+          }
+          docker logs lexica-api --tail 100
+          docker logs lexica-db --tail 50
+          throw "Service did not become healthy within $($maxAttempts * 5) seconds"
+
+      - name: Cleanup oude images (behoud 5 meest recente)
+        shell: pwsh
+        if: success()
+        run: |
+          $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" | Sort-Object -Descending | Select-Object -Skip 5
+          foreach ($line in $images) {
+            $id = ($line -split " ")[0]
+            docker rmi -f $id 2>$null
+          }
