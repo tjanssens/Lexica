@@ -20,3 +20,5 @@ Thumbs.db
 
 # Secrets (production)
 appsettings.Production.json
+.env
+.env.local

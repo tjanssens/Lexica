@@ -1,0 +1,17 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+**/.vs
+**/.vscode
+.git
+.github
+docs
+data/*.xlsx
+data/*.doc
+data/*.txt
+*.md
+appsettings.Production.json
+.env
+.env.local
