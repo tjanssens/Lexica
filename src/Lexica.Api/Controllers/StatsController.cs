@@ -117,6 +117,50 @@ public class StatsController(AppDbContext db) : ControllerBase
         return Ok(new WeeklyStatsDto(days, user.Streak));
     }
 
+    [HttpGet("monthly")]
+    public async Task<ActionResult<MonthlyStatsDto>> GetMonthlyStats([FromQuery] int? year, [FromQuery] int? month)
+    {
+        var today = DateTime.UtcNow.Date;
+        var y = year ?? today.Year;
+        var m = month ?? today.Month;
+
+        if (m < 1 || m > 12) return BadRequest("Invalid month");
+
+        var firstDay = new DateTime(y, m, 1);
+        var daysInMonth = DateTime.DaysInMonth(y, m);
+        var lastDay = firstDay.AddDays(daysInMonth - 1);
+
+        var logs = await db.ReviewLogs
+            .Where(r => r.UserId == UserId && r.ReviewedAt >= firstDay && r.ReviewedAt < firstDay.AddDays(daysInMonth))
+            .Select(r => new { r.ReviewedAt.Date, r.Result })
+            .ToListAsync();
+
+        var grouped = logs
+            .GroupBy(r => r.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var days = new List<DayStatsDto>();
+        for (var d = firstDay; d <= lastDay; d = d.AddDays(1))
+        {
+            if (grouped.TryGetValue(d, out var dayLogs))
+            {
+                days.Add(new DayStatsDto(
+                    d,
+                    dayLogs.Count,
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Known),
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Easy),
+                    dayLogs.Count(l => l.Result == Lexica.Core.Enums.ReviewResult.Unknown)
+                ));
+            }
+            else
+            {
+                days.Add(new DayStatsDto(d, 0, 0, 0, 0));
+            }
+        }
+
+        return Ok(new MonthlyStatsDto(y, m, days));
+    }
+
     private static string GetAchievementTitle(string type) => type switch
     {
         "first_steps" => "Primus Passus",

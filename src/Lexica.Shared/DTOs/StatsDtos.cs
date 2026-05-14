@@ -32,3 +32,9 @@ public record WeeklyStatsDto(
     List<DayStatsDto> Days,
     int CurrentStreak
 );
+
+public record MonthlyStatsDto(
+    int Year,
+    int Month,
+    List<DayStatsDto> Days
+);
