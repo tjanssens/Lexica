@@ -61,13 +61,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set image tag in environment
-        shell: pwsh
+        shell: powershell
         run: |
           $env:LEXICA_IMAGE = "${{ env.IMAGE_NAME }}:${{ needs.build-push.outputs.image-tag }}"
           Add-Content -Path $env:GITHUB_ENV -Value "LEXICA_IMAGE=$env:LEXICA_IMAGE"
 
       - name: Pull image
-        shell: pwsh
+        shell: powershell
         env:
           LEXICA_IMAGE: ${{ env.LEXICA_IMAGE }}
         run: |
@@ -75,7 +75,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "docker pull failed" }
 
       - name: Deploy with compose
-        shell: pwsh
+        shell: powershell
         env:
           LEXICA_IMAGE: ${{ env.LEXICA_IMAGE }}
         run: |
@@ -89,13 +89,13 @@ jobs:
           $existing = Get-Content $envFile | Where-Object { -not $_.StartsWith("LEXICA_IMAGE=") }
           $new = $existing + "LEXICA_IMAGE=$env:LEXICA_IMAGE"
           $content = ($new -join "`n") + "`n"
-          [System.IO.File]::WriteAllText($envFile, $content, (New-Object System.Text.UTF8Encoding $false))
+          [System.IO.File]::WriteAllText($envFile, $content, (New-Object -TypeName System.Text.UTF8Encoding -ArgumentList $false))
 
           docker compose --env-file $envFile -f (Join-Path $appRoot "docker-compose.yml") up -d --no-build --remove-orphans
           if ($LASTEXITCODE -ne 0) { throw "docker compose up failed" }
 
       - name: Health check
-        shell: pwsh
+        shell: powershell
         run: |
           $maxAttempts = 24
           for ($i = 1; $i -le $maxAttempts; $i++) {
@@ -110,7 +110,7 @@ jobs:
           throw "Service did not become healthy within $($maxAttempts * 5) seconds"
 
       - name: Cleanup oude images (behoud 5 meest recente)
-        shell: pwsh
+        shell: powershell
         if: success()
         run: |
           $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" | Sort-Object -Descending | Select-Object -Skip 5
