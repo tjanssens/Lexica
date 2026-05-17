@@ -16,7 +16,7 @@ COPY src/Lexica.Api/Lexica.Api.csproj src/Lexica.Api/
 COPY src/Lexica.Core/Lexica.Core.csproj src/Lexica.Core/
 COPY src/Lexica.Infrastructure/Lexica.Infrastructure.csproj src/Lexica.Infrastructure/
 COPY src/Lexica.Shared/Lexica.Shared.csproj src/Lexica.Shared/
-RUN dotnet restore Lexica.sln
+RUN dotnet restore src/Lexica.Api/Lexica.Api.csproj
 COPY src/Lexica.Api src/Lexica.Api
 COPY src/Lexica.Core src/Lexica.Core
 COPY src/Lexica.Infrastructure src/Lexica.Infrastructure
