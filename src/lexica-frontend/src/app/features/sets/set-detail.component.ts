@@ -83,9 +83,6 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                   <span class="subscriber-info">{{ set.subscriberCount }} abonnee{{ set.subscriberCount === 1 ? '' : 's' }}</span>
                 }
               }
-              <button class="select-toggle-btn" (click)="toggleSelectMode()">
-                {{ selectMode ? 'Annuleer selectie' : 'Selecteer woorden' }}
-              </button>
             </div>
           }
 
@@ -143,16 +140,6 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             </div>
           }
 
-          @if (selectMode && selectedWordIds.size > 0 && set?.isOwner) {
-            <div class="bulk-actions">
-              <span>{{ selectedWordIds.size }} geselecteerd</span>
-              <button (click)="splitToNewSet('move')">Verplaats naar nieuwe set…</button>
-              <button (click)="splitToNewSet('copy')">Kopieer naar nieuwe set…</button>
-              <button (click)="moveToExisting('move')">Verplaats naar bestaande set…</button>
-              <button (click)="moveToExisting('copy')">Kopieer naar bestaande set…</button>
-            </div>
-          }
-
           <div class="list-header">
             <h3>{{ wordFilter ? filterLabel : 'Woorden in set' }} <span class="filter-count">({{ filteredSetWords.length }})</span></h3>
             <div class="sort-bar">
@@ -164,20 +151,83 @@ import { LoadingComponent } from '../../shared/components/loading.component';
               </button>
             </div>
           </div>
+
+          @if (set.isOwner && filteredSetWords.length > 0) {
+            <div class="selection-bar">
+              <label class="select-all-label">
+                <input type="checkbox"
+                       [checked]="allSelected"
+                       [indeterminate]="someSelected && !allSelected"
+                       (change)="toggleSelectAll()" />
+                <span>{{ allSelected ? 'Alles gedeselecteerd' : 'Selecteer alles' }} ({{ filteredSetWords.length }})</span>
+              </label>
+              <button class="bulk-btn" (click)="showBulkModal = true" [disabled]="selectedWordIds.size === 0">
+                <i class="fa-solid fa-bolt"></i>
+                Bulk acties
+                @if (selectedWordIds.size > 0) {
+                  <span class="bulk-count">{{ selectedWordIds.size }}</span>
+                }
+              </button>
+            </div>
+          }
+
           <div class="word-list">
             @for (word of filteredSetWords; track word.id) {
-              <div class="word-row">
-                @if (selectMode) {
-                  <input type="checkbox"
-                         [checked]="selectedWordIds.has(word.id)"
-                         (change)="toggleWordSelected(word.id)" />
-                }
-                <app-word-item [word]="word"></app-word-item>
-              </div>
+              <app-word-item
+                [word]="word"
+                [selectable]="set.isOwner"
+                [selected]="selectedWordIds.has(word.id)"
+                (selectionChange)="onWordSelectionChange(word.id, $event)">
+              </app-word-item>
             } @empty {
               <p class="empty">Geen woorden in deze set.</p>
             }
           </div>
+
+          @if (showBulkModal) {
+            <div class="modal-backdrop" (click)="showBulkModal = false">
+              <div class="modal bulk-modal" (click)="$event.stopPropagation()">
+                <div class="modal-header">
+                  <h3>Bulk acties — {{ selectedWordIds.size }} {{ selectedWordIds.size === 1 ? 'woord' : 'woorden' }}</h3>
+                  <button type="button" class="modal-close" (click)="showBulkModal = false"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body bulk-modal-body">
+                  <button class="bulk-action-btn" (click)="bulkAction('split-move')">
+                    <span class="bulk-icon move"><i class="fa-solid fa-scissors"></i></span>
+                    <span class="bulk-text">
+                      <strong>Verplaats naar nieuwe set</strong>
+                      <small>Maak een nieuwe set met deze woorden, verwijder ze uit deze set</small>
+                    </span>
+                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                  </button>
+                  <button class="bulk-action-btn" (click)="bulkAction('split-copy')">
+                    <span class="bulk-icon copy"><i class="fa-solid fa-clone"></i></span>
+                    <span class="bulk-text">
+                      <strong>Kopieer naar nieuwe set</strong>
+                      <small>Maak een nieuwe set met deze woorden, laat ze ook hier staan</small>
+                    </span>
+                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                  </button>
+                  <button class="bulk-action-btn" (click)="bulkAction('move-existing')">
+                    <span class="bulk-icon move"><i class="fa-solid fa-right-long"></i></span>
+                    <span class="bulk-text">
+                      <strong>Verplaats naar bestaande set</strong>
+                      <small>Kies een andere eigen set en verplaats de woorden ernaartoe</small>
+                    </span>
+                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                  </button>
+                  <button class="bulk-action-btn" (click)="bulkAction('copy-existing')">
+                    <span class="bulk-icon copy"><i class="fa-solid fa-copy"></i></span>
+                    <span class="bulk-text">
+                      <strong>Kopieer naar bestaande set</strong>
+                      <small>Kopieer de woorden naar een andere eigen set, behoud hier ook</small>
+                    </span>
+                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
         }
       </div>
     </div>
@@ -375,26 +425,53 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .empty { text-align: center; color: #888; padding: 2rem; }
     .error { background: #fee2e2; color: #dc2626; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; }
 
-    .select-toggle-btn {
-      padding: 0.4rem 0.9rem; background: #f3f4f6; color: #374151;
-      border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 0.82rem;
-      cursor: pointer; align-self: flex-start;
-      &:hover { border-color: #0f3460; color: #0f3460; }
+    .selection-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: 10px;
+      padding: 0.6rem 0.9rem; margin-bottom: 0.6rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      gap: 0.75rem;
+    }
+    .select-all-label {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.85rem; font-weight: 600; color: #374151;
+      cursor: pointer; margin: 0;
+      input { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; margin: 0; }
+    }
+    .bulk-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.9rem; background: #2563eb; color: white;
+      border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+      &:hover:not(:disabled) { background: #1d4ed8; }
+      &:disabled { background: #cbd5e1; cursor: not-allowed; }
+    }
+    .bulk-count {
+      background: white; color: #2563eb; font-size: 0.75rem; font-weight: 700;
+      padding: 1px 7px; border-radius: 999px; min-width: 18px; text-align: center;
     }
 
-    .bulk-actions {
-      display: flex; gap: 8px; align-items: center; padding: 8px;
-      background: #f3f4f6; border-radius: 4px; margin: 8px 0; flex-wrap: wrap;
+    .bulk-modal { max-width: 460px; }
+    .bulk-modal-body { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .bulk-action-btn {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.85rem 1rem;
+      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      cursor: pointer; text-align: left; width: 100%;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+      &:hover { background: #eff6ff; border-color: #2563eb; transform: translateX(2px); }
     }
-    .bulk-actions span { font-size: 0.85rem; font-weight: 600; color: #374151; }
-    .bulk-actions button {
-      padding: 6px 12px; background: #2563eb; color: white;
-      border: none; border-radius: 4px; cursor: pointer; font-size: 0.82rem;
-      &:hover { background: #1d4ed8; }
+    .bulk-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+      font-size: 1rem; color: white;
     }
-
-    .word-row { display: flex; align-items: center; gap: 8px; }
-    .word-row input[type="checkbox"] { width: auto; flex-shrink: 0; margin: 0; cursor: pointer; }
+    .bulk-icon.move { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+    .bulk-icon.copy { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .bulk-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .bulk-text strong { font-size: 0.9rem; color: #111827; font-weight: 600; }
+    .bulk-text small { font-size: 0.75rem; color: #6b7280; line-height: 1.3; }
+    .bulk-chevron { color: #9ca3af; font-size: 0.75rem; flex-shrink: 0; }
   `]
 })
 export class SetDetailComponent implements OnInit {
@@ -412,8 +489,8 @@ export class SetDetailComponent implements OnInit {
   addError = '';
   showAddModal = false;
   copying = false;
-  selectMode = false;
   selectedWordIds = new Set<string>();
+  showBulkModal = false;
 
   constructor(
     public api: ApiService,
@@ -570,24 +647,45 @@ export class SetDetailComponent implements OnInit {
     });
   }
 
-  toggleSelectMode() {
-    this.selectMode = !this.selectMode;
-    if (!this.selectMode) this.selectedWordIds.clear();
+  onWordSelectionChange(id: string, selected: boolean) {
+    if (selected) this.selectedWordIds.add(id);
+    else this.selectedWordIds.delete(id);
   }
 
-  toggleWordSelected(id: string) {
-    if (this.selectedWordIds.has(id)) this.selectedWordIds.delete(id);
-    else this.selectedWordIds.add(id);
+  get allSelected(): boolean {
+    return this.filteredSetWords.length > 0 &&
+           this.filteredSetWords.every(w => this.selectedWordIds.has(w.id));
   }
 
-  splitToNewSet(mode: 'move' | 'copy') {
+  get someSelected(): boolean {
+    return this.filteredSetWords.some(w => this.selectedWordIds.has(w.id));
+  }
+
+  toggleSelectAll() {
+    if (this.allSelected) {
+      this.filteredSetWords.forEach(w => this.selectedWordIds.delete(w.id));
+    } else {
+      this.filteredSetWords.forEach(w => this.selectedWordIds.add(w.id));
+    }
+  }
+
+  bulkAction(action: 'split-move' | 'split-copy' | 'move-existing' | 'copy-existing') {
+    this.showBulkModal = false;
+    switch (action) {
+      case 'split-move': this.splitToNewSet('move'); break;
+      case 'split-copy': this.splitToNewSet('copy'); break;
+      case 'move-existing': this.moveToExisting('move'); break;
+      case 'copy-existing': this.moveToExisting('copy'); break;
+    }
+  }
+
+  private splitToNewSet(mode: 'move' | 'copy') {
     if (!this.set) return;
     const name = prompt('Naam voor de nieuwe set:');
     if (!name) return;
     const ids = Array.from(this.selectedWordIds);
     this.api.splitSet(this.set.id, { name, wordIds: ids, mode }).subscribe({
       next: (newSet) => {
-        this.selectMode = false;
         this.selectedWordIds.clear();
         this.router.navigate(['/sets', newSet.id]);
       },
@@ -595,7 +693,7 @@ export class SetDetailComponent implements OnInit {
     });
   }
 
-  moveToExisting(mode: 'move' | 'copy') {
+  private moveToExisting(mode: 'move' | 'copy') {
     if (!this.set) return;
     this.api.getSets(this.set.language).subscribe(allSets => {
       const candidates = allSets.filter(s => s.isOwner && s.id !== this.set!.id);
@@ -608,7 +706,6 @@ export class SetDetailComponent implements OnInit {
       const ids = Array.from(this.selectedWordIds);
       this.api.moveWords({ fromSetId: this.set!.id, toSetId: target.id, wordIds: ids, mode }).subscribe({
         next: () => {
-          this.selectMode = false;
           this.selectedWordIds.clear();
           this.loadSet(this.set!.id);
         },
