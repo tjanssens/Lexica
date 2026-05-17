@@ -11,7 +11,14 @@ import { WordDto } from '../../core/services/api.service';
     <a [routerLink]="['/words', word.id]" class="word-item">
       <div class="word-number">{{ word.number }}</div>
       <div class="word-content">
-        <span class="word-term">{{ word.term }}</span>
+        <span class="word-term">
+          {{ word.term }}
+          @if (word.originalAuthorDisplayName) {
+            <span class="origin-badge" [title]="'Origineel van ' + word.originalAuthorDisplayName">
+              <i class="fa-solid fa-link"></i>
+            </span>
+          }
+        </span>
         <span class="word-translation">{{ word.translation }}</span>
       </div>
       <span class="word-stars">
@@ -52,6 +59,7 @@ import { WordDto } from '../../core/services/api.service';
 
     .word-term { font-weight: 600; color: #1a1a2e; }
     .word-translation { font-size: 0.85rem; color: #666; }
+    .origin-badge { color: #888; font-size: 0.8em; margin-left: 6px; }
 
     .word-stars {
       display: flex; gap: 0.1rem; font-size: 0.7rem;
