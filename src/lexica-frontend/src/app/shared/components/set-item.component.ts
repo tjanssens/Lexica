@@ -50,7 +50,7 @@ import { ApiService, SetDto } from '../../core/services/api.service';
       align-items: center;
       background: white;
       border-radius: 10px;
-      padding: 1rem 1.25rem;
+      padding: 1rem;
       margin-bottom: 0.5rem;
       text-decoration: none;
       color: inherit;

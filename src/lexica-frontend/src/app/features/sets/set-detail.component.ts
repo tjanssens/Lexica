@@ -161,7 +161,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                        (change)="toggleSelectAll()" />
                 <span>{{ allSelected ? 'Alles gedeselecteerd' : 'Selecteer alles' }} ({{ filteredSetWords.length }})</span>
               </label>
-              <button class="bulk-btn" (click)="showBulkModal = true" [disabled]="selectedWordIds.size === 0">
+              <button class="bulk-btn" (click)="openBulkModal()" [disabled]="selectedWordIds.size === 0">
                 <i class="fa-solid fa-bolt"></i>
                 Bulk acties
                 @if (selectedWordIds.size > 0) {
@@ -185,46 +185,102 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </div>
 
           @if (showBulkModal) {
-            <div class="modal-backdrop" (click)="showBulkModal = false">
+            <div class="modal-backdrop" (click)="closeBulkModal()">
               <div class="modal bulk-modal" (click)="$event.stopPropagation()">
                 <div class="modal-header">
-                  <h3>Bulk acties — {{ selectedWordIds.size }} {{ selectedWordIds.size === 1 ? 'woord' : 'woorden' }}</h3>
-                  <button type="button" class="modal-close" (click)="showBulkModal = false"><i class="fa-solid fa-xmark"></i></button>
+                  @if (bulkStep === 'choose') {
+                    <h3>Bulk acties — {{ selectedWordIds.size }} {{ selectedWordIds.size === 1 ? 'woord' : 'woorden' }}</h3>
+                  } @else {
+                    <button type="button" class="modal-back" (click)="backToChoose()" [disabled]="bulkBusy"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h3>{{ bulkActionTitle }}</h3>
+                  }
+                  <button type="button" class="modal-close" (click)="closeBulkModal()"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <div class="modal-body bulk-modal-body">
-                  <button class="bulk-action-btn" (click)="bulkAction('split-move')">
-                    <span class="bulk-icon move"><i class="fa-solid fa-scissors"></i></span>
-                    <span class="bulk-text">
-                      <strong>Verplaats naar nieuwe set</strong>
-                      <small>Maak een nieuwe set met deze woorden, verwijder ze uit deze set</small>
-                    </span>
-                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
-                  </button>
-                  <button class="bulk-action-btn" (click)="bulkAction('split-copy')">
-                    <span class="bulk-icon copy"><i class="fa-solid fa-clone"></i></span>
-                    <span class="bulk-text">
-                      <strong>Kopieer naar nieuwe set</strong>
-                      <small>Maak een nieuwe set met deze woorden, laat ze ook hier staan</small>
-                    </span>
-                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
-                  </button>
-                  <button class="bulk-action-btn" (click)="bulkAction('move-existing')">
-                    <span class="bulk-icon move"><i class="fa-solid fa-right-long"></i></span>
-                    <span class="bulk-text">
-                      <strong>Verplaats naar bestaande set</strong>
-                      <small>Kies een andere eigen set en verplaats de woorden ernaartoe</small>
-                    </span>
-                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
-                  </button>
-                  <button class="bulk-action-btn" (click)="bulkAction('copy-existing')">
-                    <span class="bulk-icon copy"><i class="fa-solid fa-copy"></i></span>
-                    <span class="bulk-text">
-                      <strong>Kopieer naar bestaande set</strong>
-                      <small>Kopieer de woorden naar een andere eigen set, behoud hier ook</small>
-                    </span>
-                    <i class="fa-solid fa-chevron-right bulk-chevron"></i>
-                  </button>
-                </div>
+
+                @if (bulkStep === 'choose') {
+                  <div class="modal-body bulk-modal-body">
+                    <button class="bulk-action-btn" (click)="pickBulkAction('split-move')">
+                      <span class="bulk-icon move"><i class="fa-solid fa-scissors"></i></span>
+                      <span class="bulk-text">
+                        <strong>Verplaats naar nieuwe set</strong>
+                        <small>Maak een nieuwe set met deze woorden, verwijder ze uit deze set</small>
+                      </span>
+                      <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                    </button>
+                    <button class="bulk-action-btn" (click)="pickBulkAction('split-copy')">
+                      <span class="bulk-icon copy"><i class="fa-solid fa-clone"></i></span>
+                      <span class="bulk-text">
+                        <strong>Kopieer naar nieuwe set</strong>
+                        <small>Maak een nieuwe set met deze woorden, laat ze ook hier staan</small>
+                      </span>
+                      <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                    </button>
+                    <button class="bulk-action-btn" (click)="pickBulkAction('move-existing')">
+                      <span class="bulk-icon move"><i class="fa-solid fa-right-long"></i></span>
+                      <span class="bulk-text">
+                        <strong>Verplaats naar bestaande set</strong>
+                        <small>Kies een andere eigen set en verplaats de woorden ernaartoe</small>
+                      </span>
+                      <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                    </button>
+                    <button class="bulk-action-btn" (click)="pickBulkAction('copy-existing')">
+                      <span class="bulk-icon copy"><i class="fa-solid fa-copy"></i></span>
+                      <span class="bulk-text">
+                        <strong>Kopieer naar bestaande set</strong>
+                        <small>Kopieer de woorden naar een andere eigen set, behoud hier ook</small>
+                      </span>
+                      <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                    </button>
+                  </div>
+                }
+
+                @if (bulkStep === 'name') {
+                  <div class="modal-body wizard-body">
+                    <label class="wizard-label">Naam voor de nieuwe set</label>
+                    <input type="text"
+                           class="wizard-input"
+                           [(ngModel)]="newSetName"
+                           (keyup.enter)="submitNewSet()"
+                           placeholder="bijv. Les 1 — werkwoorden"
+                           autofocus />
+                    <p class="wizard-hint">{{ selectedWordIds.size }} {{ selectedWordIds.size === 1 ? 'woord' : 'woorden' }} in dezelfde taal als deze set.</p>
+                    @if (bulkError) { <div class="error">{{ bulkError }}</div> }
+                    <div class="wizard-actions">
+                      <button type="button" class="btn-secondary" (click)="backToChoose()" [disabled]="bulkBusy">Terug</button>
+                      <button type="button" class="btn-primary" (click)="submitNewSet()" [disabled]="bulkBusy || !newSetName.trim()">
+                        {{ bulkBusy ? 'Bezig…' : 'Aanmaken' }}
+                      </button>
+                    </div>
+                  </div>
+                }
+
+                @if (bulkStep === 'pickSet') {
+                  <div class="modal-body wizard-body">
+                    @if (bulkBusy && candidateSets.length === 0) {
+                      <p class="wizard-hint">Sets laden…</p>
+                    } @else if (candidateSets.length === 0) {
+                      <p class="wizard-hint">Geen andere eigen sets in deze taal. Maak eerst een set aan.</p>
+                      <div class="wizard-actions">
+                        <button type="button" class="btn-secondary" (click)="closeBulkModal()">Sluiten</button>
+                      </div>
+                    } @else {
+                      <p class="wizard-hint">Kies de doel-set ({{ candidateSets.length }} beschikbaar):</p>
+                      <div class="set-picker">
+                        @for (s of candidateSets; track s.id) {
+                          <button type="button" class="set-picker-item" (click)="submitMoveToExisting(s)" [disabled]="bulkBusy">
+                            <span class="picker-lang"><i class="fa-solid" [class.fa-landmark]="s.language === 'Latin'" [class.fa-scroll]="s.language !== 'Latin'"></i></span>
+                            <span class="picker-info">
+                              <strong>{{ s.name }}</strong>
+                              <small>{{ s.wordCount }} {{ s.wordCount === 1 ? 'woord' : 'woorden' }}</small>
+                            </span>
+                            <i class="fa-solid fa-chevron-right bulk-chevron"></i>
+                          </button>
+                        }
+                      </div>
+                      @if (bulkError) { <div class="error">{{ bulkError }}</div> }
+                    }
+                  </div>
+                }
               </div>
             </div>
           }
@@ -472,6 +528,55 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .bulk-text strong { font-size: 0.9rem; color: #111827; font-weight: 600; }
     .bulk-text small { font-size: 0.75rem; color: #6b7280; line-height: 1.3; }
     .bulk-chevron { color: #9ca3af; font-size: 0.75rem; flex-shrink: 0; }
+
+    .modal-back {
+      background: none; border: none; font-size: 1rem; color: #6b7280;
+      cursor: pointer; padding: 0.25rem 0.5rem; margin-right: 0.25rem;
+      &:hover:not(:disabled) { color: #0f3460; }
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+    .modal-header { gap: 0.25rem; }
+
+    .wizard-body { padding: 1.25rem; }
+    .wizard-label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
+    .wizard-input {
+      width: 100%; padding: 0.7rem 0.85rem;
+      border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 0.95rem; box-sizing: border-box;
+      &:focus { outline: none; border-color: #2563eb; }
+    }
+    .wizard-hint { font-size: 0.8rem; color: #6b7280; margin: 0.5rem 0 0; }
+    .wizard-actions {
+      display: flex; gap: 0.5rem; justify-content: flex-end;
+      margin-top: 1rem;
+    }
+    .btn-primary {
+      padding: 0.6rem 1.1rem; background: #2563eb; color: white;
+      border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      &:hover:not(:disabled) { background: #1d4ed8; }
+      &:disabled { background: #cbd5e1; cursor: not-allowed; }
+    }
+    .btn-secondary {
+      padding: 0.6rem 1.1rem; background: white; color: #374151;
+      border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      &:hover:not(:disabled) { border-color: #0f3460; color: #0f3460; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    .set-picker { display: flex; flex-direction: column; gap: 0.4rem; max-height: 360px; overflow-y: auto; margin-top: 0.5rem; }
+    .set-picker-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.7rem 0.85rem;
+      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      cursor: pointer; text-align: left; width: 100%;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+      &:hover:not(:disabled) { background: #eff6ff; border-color: #2563eb; transform: translateX(2px); }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+    .picker-lang { font-size: 1.2rem; color: #0f3460; flex-shrink: 0; }
+    .picker-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .picker-info strong { font-size: 0.9rem; color: #111827; font-weight: 600; }
+    .picker-info small { font-size: 0.75rem; color: #6b7280; }
   `]
 })
 export class SetDetailComponent implements OnInit {
@@ -491,6 +596,12 @@ export class SetDetailComponent implements OnInit {
   copying = false;
   selectedWordIds = new Set<string>();
   showBulkModal = false;
+  bulkStep: 'choose' | 'name' | 'pickSet' = 'choose';
+  bulkAction: 'split-move' | 'split-copy' | 'move-existing' | 'copy-existing' | null = null;
+  newSetName = '';
+  candidateSets: SetDto[] = [];
+  bulkBusy = false;
+  bulkError = '';
 
   constructor(
     public api: ApiService,
@@ -669,48 +780,101 @@ export class SetDetailComponent implements OnInit {
     }
   }
 
-  bulkAction(action: 'split-move' | 'split-copy' | 'move-existing' | 'copy-existing') {
+  openBulkModal() {
+    this.showBulkModal = true;
+    this.resetBulkWizard();
+  }
+
+  closeBulkModal() {
     this.showBulkModal = false;
-    switch (action) {
-      case 'split-move': this.splitToNewSet('move'); break;
-      case 'split-copy': this.splitToNewSet('copy'); break;
-      case 'move-existing': this.moveToExisting('move'); break;
-      case 'copy-existing': this.moveToExisting('copy'); break;
+    this.resetBulkWizard();
+  }
+
+  private resetBulkWizard() {
+    this.bulkStep = 'choose';
+    this.bulkAction = null;
+    this.newSetName = '';
+    this.candidateSets = [];
+    this.bulkBusy = false;
+    this.bulkError = '';
+  }
+
+  pickBulkAction(action: 'split-move' | 'split-copy' | 'move-existing' | 'copy-existing') {
+    this.bulkAction = action;
+    this.bulkError = '';
+    if (action === 'split-move' || action === 'split-copy') {
+      this.newSetName = '';
+      this.bulkStep = 'name';
+    } else {
+      if (!this.set) return;
+      this.bulkBusy = true;
+      this.api.getSets(this.set.language).subscribe({
+        next: (allSets) => {
+          this.candidateSets = allSets.filter(s => s.isOwner && s.id !== this.set!.id);
+          this.bulkBusy = false;
+          this.bulkStep = 'pickSet';
+        },
+        error: () => {
+          this.bulkBusy = false;
+          this.bulkError = 'Sets laden mislukt.';
+        }
+      });
     }
   }
 
-  private splitToNewSet(mode: 'move' | 'copy') {
-    if (!this.set) return;
-    const name = prompt('Naam voor de nieuwe set:');
-    if (!name) return;
+  backToChoose() {
+    this.bulkStep = 'choose';
+    this.bulkAction = null;
+    this.bulkError = '';
+  }
+
+  get bulkActionTitle(): string {
+    switch (this.bulkAction) {
+      case 'split-move': return 'Verplaats naar nieuwe set';
+      case 'split-copy': return 'Kopieer naar nieuwe set';
+      case 'move-existing': return 'Verplaats naar bestaande set';
+      case 'copy-existing': return 'Kopieer naar bestaande set';
+      default: return '';
+    }
+  }
+
+  submitNewSet() {
+    if (!this.set || !this.bulkAction) return;
+    const name = this.newSetName.trim();
+    if (!name) { this.bulkError = 'Geef een naam op.'; return; }
+    const mode: 'move' | 'copy' = this.bulkAction === 'split-move' ? 'move' : 'copy';
     const ids = Array.from(this.selectedWordIds);
+    this.bulkBusy = true;
+    this.bulkError = '';
     this.api.splitSet(this.set.id, { name, wordIds: ids, mode }).subscribe({
       next: (newSet) => {
         this.selectedWordIds.clear();
+        this.closeBulkModal();
         this.router.navigate(['/sets', newSet.id]);
       },
-      error: (err) => alert(err.error?.message ?? 'Mislukt')
+      error: (err) => {
+        this.bulkBusy = false;
+        this.bulkError = err.error?.message ?? err.error ?? 'Mislukt';
+      }
     });
   }
 
-  private moveToExisting(mode: 'move' | 'copy') {
-    if (!this.set) return;
-    this.api.getSets(this.set.language).subscribe(allSets => {
-      const candidates = allSets.filter(s => s.isOwner && s.id !== this.set!.id);
-      if (candidates.length === 0) { alert('Geen andere eigen sets in deze taal.'); return; }
-      const labels = candidates.map((s, i) => `${i + 1}: ${s.name}`).join('\n');
-      const pick = prompt(`Kies een set (nummer):\n${labels}`);
-      const idx = Number(pick) - 1;
-      if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
-      const target = candidates[idx];
-      const ids = Array.from(this.selectedWordIds);
-      this.api.moveWords({ fromSetId: this.set!.id, toSetId: target.id, wordIds: ids, mode }).subscribe({
-        next: () => {
-          this.selectedWordIds.clear();
-          this.loadSet(this.set!.id);
-        },
-        error: (err) => alert(err.error?.message ?? 'Mislukt')
-      });
+  submitMoveToExisting(target: SetDto) {
+    if (!this.set || !this.bulkAction) return;
+    const mode: 'move' | 'copy' = this.bulkAction === 'move-existing' ? 'move' : 'copy';
+    const ids = Array.from(this.selectedWordIds);
+    this.bulkBusy = true;
+    this.bulkError = '';
+    this.api.moveWords({ fromSetId: this.set.id, toSetId: target.id, wordIds: ids, mode }).subscribe({
+      next: () => {
+        this.selectedWordIds.clear();
+        this.closeBulkModal();
+        this.loadSet(this.set!.id);
+      },
+      error: (err) => {
+        this.bulkBusy = false;
+        this.bulkError = err.error?.message ?? err.error ?? 'Mislukt';
+      }
     });
   }
 }

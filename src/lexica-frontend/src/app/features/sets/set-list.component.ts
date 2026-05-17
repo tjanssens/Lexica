@@ -32,28 +32,12 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </select>
         </div>
 
-        <div class="bulk-controls">
-          <button (click)="toggleSelectMode()">
-            {{ selectMode ? 'Annuleer' : 'Selecteer sets' }}
-          </button>
-          @if (selectMode && selectedSetIds.size >= 2) {
-            <button (click)="mergeSelected()">Voeg {{ selectedSetIds.size }} sets samen…</button>
-          }
-        </div>
-
         @if (loading) {
           <app-loading message="Sets laden..."></app-loading>
         } @else {
           <div class="set-list">
             @for (set of sets; track set.id) {
-              <div class="set-row">
-                @if (selectMode && set.isOwner) {
-                  <input type="checkbox"
-                         [checked]="selectedSetIds.has(set.id)"
-                         (change)="toggleSelected(set.id)" />
-                }
-                <app-set-item [set]="set"></app-set-item>
-              </div>
+              <app-set-item [set]="set"></app-set-item>
             } @empty {
               <div class="empty-state">
                 <p>Nog geen sets.</p>
@@ -162,10 +146,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
       &:focus { outline: none; border-color: #0f3460; }
     }
 
-    .bulk-controls { display: flex; gap: 8px; padding: 8px 1rem; }
-    .bulk-controls button { padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .set-list { padding: 0 1rem 1rem; }
-    .set-row { display: flex; align-items: center; gap: 8px; }
 
     .public-set-item {
       display: flex; align-items: center; gap: 0.5rem;
@@ -223,8 +204,6 @@ export class SetListComponent implements OnInit {
   searchQuery = '';
   tab: 'mine' | 'discover' = 'mine';
   loading = true;
-  selectMode = false;
-  selectedSetIds = new Set<string>();
 
   constructor(
     public api: ApiService,
@@ -274,44 +253,5 @@ export class SetListComponent implements OnInit {
         pset.subscriberCount++;
       });
     }
-  }
-
-  toggleSelectMode() {
-    this.selectMode = !this.selectMode;
-    if (!this.selectMode) this.selectedSetIds.clear();
-  }
-
-  toggleSelected(id: string) {
-    if (this.selectedSetIds.has(id)) this.selectedSetIds.delete(id);
-    else this.selectedSetIds.add(id);
-  }
-
-  get selectedOwnedSets() {
-    return this.sets.filter(s => this.selectedSetIds.has(s.id) && s.isOwner);
-  }
-
-  mergeSelected() {
-    const selected = this.selectedOwnedSets;
-    if (selected.length < 2) return;
-    const languages = new Set(selected.map(s => s.language));
-    if (languages.size > 1) {
-      alert('Geselecteerde sets moeten dezelfde taal hebben.');
-      return;
-    }
-    const name = prompt('Naam voor de samengevoegde set:');
-    if (!name) return;
-    const deleteOriginals = confirm('Originele sets verwijderen na samenvoegen?');
-    this.api.mergeSets({
-      name,
-      setIds: selected.map(s => s.id),
-      deleteOriginals
-    }).subscribe({
-      next: () => {
-        this.selectMode = false;
-        this.selectedSetIds.clear();
-        this.loadSets();
-      },
-      error: (err) => alert(err.error?.message ?? 'Samenvoegen mislukt')
-    });
   }
 }
