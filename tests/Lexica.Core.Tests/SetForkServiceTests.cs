@@ -360,4 +360,68 @@ public class SetForkServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             service.MergeSetsAsync(user.Id, "X", new List<Guid> { setA.Id, setB.Id }, false));
     }
+
+    [Fact]
+    public async Task MoveWordsAsync_MoveVerplaatstTussenSets()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 3);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        var idsToMove = wordsA.Take(2).Select(w => w.Id).ToList();
+        await service.MoveWordsAsync(user.Id, setA.Id, setB.Id, idsToMove, "move");
+
+        Assert.Equal(1, await db.SetWords.CountAsync(sw => sw.SetId == setA.Id));
+        Assert.Equal(2, await db.SetWords.CountAsync(sw => sw.SetId == setB.Id));
+    }
+
+    [Fact]
+    public async Task MoveWordsAsync_CopyLaatBronOngewijzigd()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 3);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await service.MoveWordsAsync(user.Id, setA.Id, setB.Id, wordsA.Select(w => w.Id).ToList(), "copy");
+
+        Assert.Equal(3, await db.SetWords.CountAsync(sw => sw.SetId == setA.Id));
+        Assert.Equal(3, await db.SetWords.CountAsync(sw => sw.SetId == setB.Id));
+    }
+
+    [Fact]
+    public async Task MoveWordsAsync_SkipDuplicatesInDoel()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 3);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        // setB heeft al wordsA[0]
+        setB.SetWords.Add(new SetWord { SetId = setB.Id, WordId = wordsA[0].Id });
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await service.MoveWordsAsync(user.Id, setA.Id, setB.Id, wordsA.Select(w => w.Id).ToList(), "copy");
+
+        Assert.Equal(3, await db.SetWords.CountAsync(sw => sw.SetId == setB.Id)); // 1 al + 2 nieuw, dupe overgeslagen
+    }
+
+    [Fact]
+    public async Task MoveWordsAsync_WeigertVerschillendeTalen()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 1);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Grieks", Language = Language.Greek };
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.MoveWordsAsync(user.Id, setA.Id, setB.Id, new List<Guid> { wordsA[0].Id }, "move"));
+    }
 }

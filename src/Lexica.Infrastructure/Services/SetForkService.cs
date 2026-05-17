@@ -133,6 +133,38 @@ public class SetForkService(AppDbContext db)
     }
 
     /// <summary>
+    /// Verplaatst (move) of kopieert (copy) woorden tussen twee eigen sets met dezelfde taal.
+    /// Duplicaten in de doel-set worden overgeslagen.
+    /// </summary>
+    public async Task MoveWordsAsync(Guid userId, Guid fromSetId, Guid toSetId, List<Guid> wordIds, string mode)
+    {
+        if (wordIds == null || wordIds.Count == 0) throw new ArgumentException("Selecteer minstens één woord.");
+        if (mode != "move" && mode != "copy") throw new ArgumentException("Mode moet 'move' of 'copy' zijn.");
+        if (fromSetId == toSetId) throw new ArgumentException("Bron en doel mogen niet gelijk zijn.");
+
+        var sets = await db.Sets.Where(s => s.Id == fromSetId || s.Id == toSetId).ToListAsync();
+        var from = sets.FirstOrDefault(s => s.Id == fromSetId) ?? throw new KeyNotFoundException("Bron-set niet gevonden.");
+        var to = sets.FirstOrDefault(s => s.Id == toSetId) ?? throw new KeyNotFoundException("Doel-set niet gevonden.");
+        if (from.UserId != userId || to.UserId != userId) throw new UnauthorizedAccessException("Niet je eigen set.");
+        if (from.Language != to.Language) throw new InvalidOperationException("Sets moeten dezelfde taal hebben.");
+
+        var requested = wordIds.ToHashSet();
+        var fromSetWords = await db.SetWords.Where(sw => sw.SetId == fromSetId && requested.Contains(sw.WordId)).ToListAsync();
+        var existingInTo = await db.SetWords.Where(sw => sw.SetId == toSetId && requested.Contains(sw.WordId))
+            .Select(sw => sw.WordId).ToListAsync();
+        var existingSet = existingInTo.ToHashSet();
+
+        foreach (var sw in fromSetWords)
+        {
+            if (!existingSet.Contains(sw.WordId))
+                db.SetWords.Add(new SetWord { SetId = toSetId, WordId = sw.WordId });
+            if (mode == "move") db.SetWords.Remove(sw);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Voegt meerdere eigen sets samen tot één nieuwe set.
     /// Alle sets moeten van de gebruiker zijn en dezelfde taal hebben.
     /// </summary>
