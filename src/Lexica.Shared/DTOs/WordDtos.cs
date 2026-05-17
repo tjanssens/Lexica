@@ -14,7 +14,8 @@ public record WordDto(
     DateTime DueDate,
     DateTime? LastReviewed,
     int TimesReviewed,
-    bool IsOwner = true
+    bool IsOwner = true,
+    string? OriginalAuthorDisplayName = null
 );
 
 public record CreateWordRequest(
