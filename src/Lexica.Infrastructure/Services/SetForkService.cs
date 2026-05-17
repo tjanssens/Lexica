@@ -29,6 +29,14 @@ public class SetForkService(AppDbContext db)
             .Where(p => p.UserId == userId && sourceWordIds.Contains(p.WordId))
             .ToDictionaryAsync(p => p.WordId);
 
+        // Bepaal het hoogste bestaande Number van de subscriber voor deze taal, zodat
+        // gekopieerde woorden geen botsing veroorzaken op de unieke index (UserId, Language, Number).
+        var maxNumber = await db.Words
+            .Where(w => w.UserId == userId && w.Language == source.Language)
+            .Select(w => (int?)w.Number)
+            .MaxAsync() ?? 0;
+        var nextNumber = maxNumber + 1;
+
         var newSet = new Set
         {
             Id = Guid.NewGuid(),
@@ -42,14 +50,14 @@ public class SetForkService(AppDbContext db)
         };
         db.Sets.Add(newSet);
 
-        foreach (var sw in source.SetWords)
+        foreach (var sw in source.SetWords.OrderBy(sw => sw.Word.Number))
         {
             var src = sw.Word;
             var newWord = new Word
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Number = src.Number,
+                Number = nextNumber++,
                 Language = src.Language,
                 Term = src.Term,
                 Translation = src.Translation,

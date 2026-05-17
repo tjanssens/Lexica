@@ -127,4 +127,64 @@ public class SetForkServiceTests
         var service = new SetForkService(db);
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.CopySetAsync(set.Id, randomUserId));
     }
+
+    [Fact]
+    public async Task CopySetAsync_StaatToeAanGeabonneerdeOpPriveSet()
+    {
+        using var db = NewDb();
+        var (_, subscriber, set) = await SeedSharedSetAsync(db);
+
+        // Maak de set private — subscriber heeft een subscription, dus toegang blijft
+        var loaded = await db.Sets.FindAsync(set.Id);
+        loaded!.IsPublic = false;
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        var copy = await service.CopySetAsync(set.Id, subscriber.Id);
+
+        Assert.NotNull(copy);
+        Assert.Equal(subscriber.Id, copy.UserId);
+        var copyWords = await db.SetWords.Where(sw => sw.SetId == copy.Id).Include(sw => sw.Word).ToListAsync();
+        Assert.Equal(2, copyWords.Count);
+    }
+
+    [Fact]
+    public async Task CopySetAsync_GeeftNieuweNummersAanDieNietBotsen()
+    {
+        using var db = NewDb();
+        var (owner, subscriber, set) = await SeedSharedSetAsync(db);
+
+        // Subscriber heeft al een eigen Latijns woord met Number = 100
+        db.Words.Add(new Word
+        {
+            Id = Guid.NewGuid(),
+            UserId = subscriber.Id,
+            Number = 100,
+            Language = Language.Latin,
+            Term = "existens",
+            Translation = "bestaand"
+        });
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        var copy = await service.CopySetAsync(set.Id, subscriber.Id);
+
+        var copyWords = await db.SetWords
+            .Where(sw => sw.SetId == copy.Id)
+            .Include(sw => sw.Word)
+            .ToListAsync();
+
+        Assert.Equal(2, copyWords.Count);
+
+        // Alle gekopieerde nummers moeten boven 100 liggen
+        Assert.All(copyWords, sw => Assert.True(sw.Word.Number > 100,
+            $"Verwacht Number > 100, maar was {sw.Word.Number}"));
+
+        // Nummers moeten uniek zijn onder alle woorden van de subscriber
+        var allSubscriberNumbers = await db.Words
+            .Where(w => w.UserId == subscriber.Id && w.Language == Language.Latin)
+            .Select(w => w.Number)
+            .ToListAsync();
+        Assert.Equal(allSubscriberNumbers.Count, allSubscriberNumbers.Distinct().Count());
+    }
 }
