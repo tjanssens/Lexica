@@ -424,4 +424,24 @@ public class SetForkServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.MoveWordsAsync(user.Id, setA.Id, setB.Id, new List<Guid> { wordsA[0].Id }, "move"));
     }
+
+    [Fact]
+    public async Task MoveWordsAsync_MoveMetWoordReedsInDoel_VerwijdertUitBronBehoudtInDoel()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 2);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        // wordsA[0] zit al in beide sets
+        setB.SetWords.Add(new SetWord { SetId = setB.Id, WordId = wordsA[0].Id });
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await service.MoveWordsAsync(user.Id, setA.Id, setB.Id, new List<Guid> { wordsA[0].Id }, "move");
+
+        // Bron heeft het woord niet meer
+        Assert.False(await db.SetWords.AnyAsync(sw => sw.SetId == setA.Id && sw.WordId == wordsA[0].Id));
+        // Doel heeft het woord nog steeds (precies één keer)
+        Assert.Equal(1, await db.SetWords.CountAsync(sw => sw.SetId == setB.Id && sw.WordId == wordsA[0].Id));
+    }
 }
