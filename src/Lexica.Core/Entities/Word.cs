@@ -11,6 +11,8 @@ public class Word
     public string Term { get; set; } = string.Empty;
     public string Translation { get; set; } = string.Empty;
     public string? PartOfSpeech { get; set; }
+    public Guid? SourceWordId { get; set; }
+    public string? OriginalAuthorDisplayName { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ApplicationUser User { get; set; } = null!;
