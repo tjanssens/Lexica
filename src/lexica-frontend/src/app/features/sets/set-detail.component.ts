@@ -57,12 +57,12 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             <button type="submit">Aanmaken</button>
           </form>
         } @else if (set) {
-          @if (!set.isOwner && set.ownerName) {
+          @if (!set.isOwner) {
             <div class="owner-banner">
               @if (set.ownerPictureUrl) {
                 <img [src]="api.resolveUrl(set.ownerPictureUrl)" class="owner-avatar" />
               }
-              <span>Set van <strong>{{ set.ownerName }}</strong></span>
+              <span>Set van <strong>{{ set.ownerName || 'andere gebruiker' }}</strong></span>
               <button class="copy-btn" (click)="copySet()" [disabled]="copying">
                 {{ copying ? 'Kopiëren…' : 'Maak eigen kopie' }}
               </button>
