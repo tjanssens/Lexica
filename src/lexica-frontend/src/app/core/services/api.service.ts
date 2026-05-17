@@ -139,6 +139,22 @@ export class ApiService {
   unsubscribeFromSet(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/sets/${id}/subscribe`);
   }
+
+  copySet(id: string): Observable<SetDto> {
+    return this.http.post<SetDto>(`${this.baseUrl}/sets/${id}/copy`, {});
+  }
+
+  splitSet(id: string, request: { name: string; wordIds: string[]; mode: 'move' | 'copy' }): Observable<SetDto> {
+    return this.http.post<SetDto>(`${this.baseUrl}/sets/${id}/split`, request);
+  }
+
+  mergeSets(request: { name: string; setIds: string[]; deleteOriginals: boolean }): Observable<SetDto> {
+    return this.http.post<SetDto>(`${this.baseUrl}/sets/merge`, request);
+  }
+
+  moveWords(request: { fromSetId: string; toSetId: string; wordIds: string[]; mode: 'move' | 'copy' }): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/sets/move-words`, request);
+  }
 }
 
 // Interfaces
@@ -162,6 +178,8 @@ export interface WordDto {
   dueDate: string;
   lastReviewed?: string;
   timesReviewed: number;
+  isOwner?: boolean;
+  originalAuthorDisplayName?: string | null;
 }
 
 export interface CreateWordRequest {
