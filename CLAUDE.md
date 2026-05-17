@@ -26,12 +26,18 @@ dotnet build Lexica.sln
 cd src/lexica-frontend && npm run build
 ```
 
+### Tests
+```bash
+dotnet test tests/Lexica.Core.Tests/Lexica.Core.Tests.csproj
+```
+Tests draaien tegen EF Core InMemory; geen externe database nodig.
+
 ### EF Core Migrations
 ```bash
 dotnet ef migrations add MigrationName --project src/Lexica.Infrastructure --startup-project src/Lexica.Api
 dotnet ef database update --project src/Lexica.Infrastructure --startup-project src/Lexica.Api
 ```
-Database is SQL Server LocalDB (`LexicaDb`). Migrations worden automatisch toegepast in Development (`app.MigrateDatabase()` in Program.cs).
+Database is PostgreSQL (Npgsql). Connection string staat in `appsettings.json` onder `ConnectionStrings:DefaultConnection`. Migraties worden automatisch toegepast in Development via `db.Database.Migrate()` in `Program.cs`.
 
 ## LAN-modus (testen op smartphone)
 
@@ -54,7 +60,7 @@ npm run start:lan
 
 ## Architectuur
 
-### Backend — Clean Architecture (.NET 9.0)
+### Backend — Clean Architecture (.NET 10)
 
 ```
 Lexica.Api            → Controllers, Program.cs (DI, auth, CORS, migrations)
@@ -70,6 +76,7 @@ Lexica.Shared         → DTOs (gedeeld tussen lagen)
 - `SessionsController` — Studiesessies met SM-2 spaced repetition
 - `StatsController` — Statistieken, weekoverzicht, achievements
 - `ImportController` — Excel import met preview en bevestiging
+- `SetsController` — CRUD voor sets, public set discovery, subscriptions, en **fork/split/merge/move-words** (delegeert naar `SetForkService`)
 
 **Domeinmodel** (`src/Lexica.Core/Entities/`):
 - `ApplicationUser` (extends IdentityUser\<Guid>) — XP, Level, Streak, SessionSize
@@ -105,4 +112,5 @@ src/lexica-frontend/src/app/
 - `AuthInterceptor` voegt automatisch de JWT Bearer token toe aan alle requests
 - Elke controller gebruikt `User.FindFirst(ClaimTypes.NameIdentifier)` voor de huidige gebruiker
 - SM-2 algoritme zit in `Sm2Service` (`src/Lexica.Core/Services/Sm2Service.cs`)
+- Fork/split/merge/move-words logica voor sets zit in `SetForkService` (`src/Lexica.Infrastructure/Services/SetForkService.cs`)
 - Excel import/export via ClosedXML in `src/Lexica.Infrastructure/Services/`
