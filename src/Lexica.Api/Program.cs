@@ -48,6 +48,7 @@ builder.Services.AddAuthentication(options =>
 // Services
 builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<ExcelExportService>();
+builder.Services.AddScoped<SetForkService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
