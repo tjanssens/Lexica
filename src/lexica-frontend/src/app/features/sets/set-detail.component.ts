@@ -83,6 +83,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                   <span class="subscriber-info">{{ set.subscriberCount }} abonnee{{ set.subscriberCount === 1 ? '' : 's' }}</span>
                 }
               }
+              <button class="select-toggle-btn" (click)="toggleSelectMode()">
+                {{ selectMode ? 'Annuleer selectie' : 'Selecteer woorden' }}
+              </button>
             </div>
           }
 
@@ -140,6 +143,16 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             </div>
           }
 
+          @if (selectMode && selectedWordIds.size > 0 && set?.isOwner) {
+            <div class="bulk-actions">
+              <span>{{ selectedWordIds.size }} geselecteerd</span>
+              <button (click)="splitToNewSet('move')">Verplaats naar nieuwe set…</button>
+              <button (click)="splitToNewSet('copy')">Kopieer naar nieuwe set…</button>
+              <button (click)="moveToExisting('move')">Verplaats naar bestaande set…</button>
+              <button (click)="moveToExisting('copy')">Kopieer naar bestaande set…</button>
+            </div>
+          }
+
           <div class="list-header">
             <h3>{{ wordFilter ? filterLabel : 'Woorden in set' }} <span class="filter-count">({{ filteredSetWords.length }})</span></h3>
             <div class="sort-bar">
@@ -153,7 +166,14 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           </div>
           <div class="word-list">
             @for (word of filteredSetWords; track word.id) {
-              <app-word-item [word]="word"></app-word-item>
+              <div class="word-row">
+                @if (selectMode) {
+                  <input type="checkbox"
+                         [checked]="selectedWordIds.has(word.id)"
+                         (change)="toggleWordSelected(word.id)" />
+                }
+                <app-word-item [word]="word"></app-word-item>
+              </div>
             } @empty {
               <p class="empty">Geen woorden in deze set.</p>
             }
@@ -354,6 +374,27 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .word-list { }
     .empty { text-align: center; color: #888; padding: 2rem; }
     .error { background: #fee2e2; color: #dc2626; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; }
+
+    .select-toggle-btn {
+      padding: 0.4rem 0.9rem; background: #f3f4f6; color: #374151;
+      border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 0.82rem;
+      cursor: pointer; align-self: flex-start;
+      &:hover { border-color: #0f3460; color: #0f3460; }
+    }
+
+    .bulk-actions {
+      display: flex; gap: 8px; align-items: center; padding: 8px;
+      background: #f3f4f6; border-radius: 4px; margin: 8px 0; flex-wrap: wrap;
+    }
+    .bulk-actions span { font-size: 0.85rem; font-weight: 600; color: #374151; }
+    .bulk-actions button {
+      padding: 6px 12px; background: #2563eb; color: white;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 0.82rem;
+      &:hover { background: #1d4ed8; }
+    }
+
+    .word-row { display: flex; align-items: center; gap: 8px; }
+    .word-row input[type="checkbox"] { width: auto; flex-shrink: 0; margin: 0; cursor: pointer; }
   `]
 })
 export class SetDetailComponent implements OnInit {
@@ -371,6 +412,8 @@ export class SetDetailComponent implements OnInit {
   addError = '';
   showAddModal = false;
   copying = false;
+  selectMode = false;
+  selectedWordIds = new Set<string>();
 
   constructor(
     public api: ApiService,
@@ -524,6 +567,53 @@ export class SetDetailComponent implements OnInit {
     this.api.unsubscribeFromSet(this.set.id).subscribe({
       next: () => this.router.navigate(['/sets']),
       error: () => this.error = 'Fout bij uitschrijven.'
+    });
+  }
+
+  toggleSelectMode() {
+    this.selectMode = !this.selectMode;
+    if (!this.selectMode) this.selectedWordIds.clear();
+  }
+
+  toggleWordSelected(id: string) {
+    if (this.selectedWordIds.has(id)) this.selectedWordIds.delete(id);
+    else this.selectedWordIds.add(id);
+  }
+
+  splitToNewSet(mode: 'move' | 'copy') {
+    if (!this.set) return;
+    const name = prompt('Naam voor de nieuwe set:');
+    if (!name) return;
+    const ids = Array.from(this.selectedWordIds);
+    this.api.splitSet(this.set.id, { name, wordIds: ids, mode }).subscribe({
+      next: (newSet) => {
+        this.selectMode = false;
+        this.selectedWordIds.clear();
+        this.router.navigate(['/sets', newSet.id]);
+      },
+      error: (err) => alert(err.error?.message ?? 'Mislukt')
+    });
+  }
+
+  moveToExisting(mode: 'move' | 'copy') {
+    if (!this.set) return;
+    this.api.getSets(this.set.language).subscribe(allSets => {
+      const candidates = allSets.filter(s => s.isOwner && s.id !== this.set!.id);
+      if (candidates.length === 0) { alert('Geen andere eigen sets in deze taal.'); return; }
+      const labels = candidates.map((s, i) => `${i + 1}: ${s.name}`).join('\n');
+      const pick = prompt(`Kies een set (nummer):\n${labels}`);
+      const idx = Number(pick) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
+      const target = candidates[idx];
+      const ids = Array.from(this.selectedWordIds);
+      this.api.moveWords({ fromSetId: this.set!.id, toSetId: target.id, wordIds: ids, mode }).subscribe({
+        next: () => {
+          this.selectMode = false;
+          this.selectedWordIds.clear();
+          this.loadSet(this.set!.id);
+        },
+        error: (err) => alert(err.error?.message ?? 'Mislukt')
+      });
     });
   }
 }
