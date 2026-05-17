@@ -297,9 +297,8 @@ public class SetForkServiceTests
     {
         using var db = NewDb();
         var (user, setA, _) = await SeedOwnedSetAsync(db, 2);
-        var (_, setB, _) = await SeedOwnedSetAsync(db, 2);
-        // Zet beide sets op dezelfde user
-        setB.UserId = user.Id;
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        db.Sets.Add(setB);
         await db.SaveChangesAsync();
 
         var service = new SetForkService(db);
@@ -308,6 +307,28 @@ public class SetForkServiceTests
         Assert.False(await db.Sets.AnyAsync(s => s.Id == setA.Id));
         Assert.False(await db.Sets.AnyAsync(s => s.Id == setB.Id));
         Assert.True(await db.Sets.AnyAsync(s => s.Id == merged.Id));
+    }
+
+    [Fact]
+    public async Task MergeSetsAsync_DeleteOriginalsRuimtOokSubscriptionsOp()
+    {
+        using var db = NewDb();
+        var (user, setA, _) = await SeedOwnedSetAsync(db, 2);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        db.Sets.Add(setB);
+
+        // Iemand anders is op setA geabonneerd
+        var subscriber = new ApplicationUser { Id = Guid.NewGuid(), UserName = "sub" };
+        db.Users.Add(subscriber);
+        db.SetSubscriptions.Add(new SetSubscription { UserId = subscriber.Id, SetId = setA.Id });
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await service.MergeSetsAsync(user.Id, "Samen", new List<Guid> { setA.Id, setB.Id }, deleteOriginals: true);
+
+        Assert.False(await db.Sets.AnyAsync(s => s.Id == setA.Id));
+        Assert.False(await db.Sets.AnyAsync(s => s.Id == setB.Id));
+        Assert.False(await db.SetSubscriptions.AnyAsync(s => s.SetId == setA.Id));
     }
 
     [Fact]
