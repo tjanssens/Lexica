@@ -63,8 +63,12 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                 <img [src]="api.resolveUrl(set.ownerPictureUrl)" class="owner-avatar" />
               }
               <span>Set van <strong>{{ set.ownerName }}</strong></span>
+              <button class="copy-btn" (click)="copySet()" [disabled]="copying">
+                {{ copying ? 'Kopiëren…' : 'Maak eigen kopie' }}
+              </button>
               <button class="unsubscribe-btn" (click)="unsubscribe()">Uitschrijven</button>
             </div>
+            <p class="copy-hint">Met een eigen kopie kun je woorden bewerken, de set splitsen of samenvoegen.</p>
           }
 
           @if (set.isOwner) {
@@ -187,6 +191,10 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     }
 
     .owner-avatar { width: 24px; height: 24px; border-radius: 50%; }
+
+    .copy-btn { background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .copy-btn:disabled { opacity: 0.6; cursor: wait; }
+    .copy-hint { font-size: 0.85em; color: #666; margin-top: 4px; }
 
     .unsubscribe-btn {
       margin-left: auto; padding: 0.4rem 0.75rem;
@@ -362,6 +370,7 @@ export class SetDetailComponent implements OnInit {
   error = '';
   addError = '';
   showAddModal = false;
+  copying = false;
 
   constructor(
     public api: ApiService,
@@ -493,6 +502,21 @@ export class SetDetailComponent implements OnInit {
       isPublic: this.set.isPublic,
       description: this.set.description
     }).subscribe();
+  }
+
+  copySet() {
+    if (!this.set || this.copying) return;
+    this.copying = true;
+    this.api.copySet(this.set.id).subscribe({
+      next: (newSet) => {
+        this.copying = false;
+        this.router.navigate(['/sets', newSet.id]);
+      },
+      error: (err) => {
+        this.copying = false;
+        alert(err.error?.message ?? err.message ?? 'Kopiëren mislukt');
+      }
+    });
   }
 
   unsubscribe() {
