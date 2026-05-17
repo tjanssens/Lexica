@@ -11,7 +11,16 @@ import { ApiService, SetDto } from '../../core/services/api.service';
     <a [routerLink]="['/sets', set.id]" class="set-item">
       <span class="set-lang"><i class="fa-solid" [class.fa-landmark]="set.language === 'Latin'" [class.fa-scroll]="set.language !== 'Latin'"></i></span>
       <div class="set-info">
-        <strong>{{ set.name }}</strong>
+        <div class="name-row">
+          <strong>{{ set.name }}</strong>
+          @if (!set.isOwner) {
+            <span class="shared-badge" title="Geabonneerd op set van een andere gebruiker">
+              <i class="fa-solid fa-link"></i> Gedeeld
+            </span>
+          } @else {
+            <span class="owned-badge"><i class="fa-solid fa-star"></i> Eigen</span>
+          }
+        </div>
         @if (!set.isOwner && set.ownerName) {
           <span class="owner-name">
             @if (set.ownerPictureUrl) {
@@ -60,6 +69,10 @@ import { ApiService, SetDto } from '../../core/services/api.service';
       gap: 0.15rem;
       strong { color: #1a1a2e; }
     }
+
+    .name-row { display: flex; align-items: center; gap: 0.4rem; }
+    .shared-badge { color: #888; font-size: 0.75em; }
+    .owned-badge { color: #2563eb; font-size: 0.75em; }
 
     .owner-name {
       display: flex; align-items: center; gap: 0.25rem;
