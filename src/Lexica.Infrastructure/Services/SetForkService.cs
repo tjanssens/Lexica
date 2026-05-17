@@ -131,4 +131,53 @@ public class SetForkService(AppDbContext db)
         await db.SaveChangesAsync();
         return newSet;
     }
+
+    /// <summary>
+    /// Voegt meerdere eigen sets samen tot één nieuwe set.
+    /// Alle sets moeten van de gebruiker zijn en dezelfde taal hebben.
+    /// </summary>
+    public async Task<Set> MergeSetsAsync(Guid userId, string newSetName, List<Guid> setIds, bool deleteOriginals)
+    {
+        if (setIds == null || setIds.Count < 2) throw new ArgumentException("Selecteer minstens twee sets.");
+
+        var sets = await db.Sets
+            .Include(s => s.SetWords)
+            .Where(s => setIds.Contains(s.Id))
+            .ToListAsync();
+        if (sets.Count != setIds.Count) throw new KeyNotFoundException("Eén of meer sets niet gevonden.");
+        if (sets.Any(s => s.UserId != userId)) throw new UnauthorizedAccessException("Niet je eigen set.");
+
+        var languages = sets.Select(s => s.Language).Distinct().ToList();
+        if (languages.Count > 1) throw new InvalidOperationException("Sets moeten dezelfde taal hebben.");
+
+        var first = sets.First();
+        var merged = new Set
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Name = newSetName,
+            Language = first.Language,
+            DefaultDirection = first.DefaultDirection,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Sets.Add(merged);
+
+        var seen = new HashSet<Guid>();
+        foreach (var sw in sets.SelectMany(s => s.SetWords))
+        {
+            if (seen.Add(sw.WordId))
+                db.SetWords.Add(new SetWord { SetId = merged.Id, WordId = sw.WordId });
+        }
+
+        if (deleteOriginals)
+        {
+            // Subscriptions op te verwijderen sets ook weg
+            var subs = await db.SetSubscriptions.Where(s => setIds.Contains(s.SetId)).ToListAsync();
+            db.SetSubscriptions.RemoveRange(subs);
+            db.Sets.RemoveRange(sets);
+        }
+
+        await db.SaveChangesAsync();
+        return merged;
+    }
 }

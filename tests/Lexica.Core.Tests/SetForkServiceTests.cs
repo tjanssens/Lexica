@@ -263,4 +263,80 @@ public class SetForkServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.SplitSetAsync(src.Id, user.Id, "B", new List<Guid>(), "copy"));
     }
+
+    [Fact]
+    public async Task MergeSetsAsync_VoegtUniekeWoordenSamen()
+    {
+        using var db = NewDb();
+        var (user, setA, wordsA) = await SeedOwnedSetAsync(db, 3);
+        // Tweede set met 2 nieuwe woorden + 1 overlappend met setA (deelt eerste word)
+        var w4 = new Word { Id = Guid.NewGuid(), UserId = user.Id, Number = 10, Language = Language.Latin, Term = "x", Translation = "y" };
+        var w5 = new Word { Id = Guid.NewGuid(), UserId = user.Id, Number = 11, Language = Language.Latin, Term = "x2", Translation = "y2" };
+        db.Words.AddRange(w4, w5);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "B", Language = Language.Latin };
+        setB.SetWords.Add(new SetWord { SetId = setB.Id, WordId = wordsA[0].Id }); // overlap
+        setB.SetWords.Add(new SetWord { SetId = setB.Id, WordId = w4.Id });
+        setB.SetWords.Add(new SetWord { SetId = setB.Id, WordId = w5.Id });
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        var merged = await service.MergeSetsAsync(user.Id, "Samen", new List<Guid> { setA.Id, setB.Id }, deleteOriginals: false);
+
+        Assert.Equal(user.Id, merged.UserId);
+        Assert.Equal(Language.Latin, merged.Language);
+        var count = await db.SetWords.CountAsync(sw => sw.SetId == merged.Id);
+        Assert.Equal(5, count); // 3 + 3 - 1 overlap
+        // Originelen blijven
+        Assert.True(await db.Sets.AnyAsync(s => s.Id == setA.Id));
+        Assert.True(await db.Sets.AnyAsync(s => s.Id == setB.Id));
+    }
+
+    [Fact]
+    public async Task MergeSetsAsync_DeleteOriginalsVerwijdertBronnen()
+    {
+        using var db = NewDb();
+        var (user, setA, _) = await SeedOwnedSetAsync(db, 2);
+        var (_, setB, _) = await SeedOwnedSetAsync(db, 2);
+        // Zet beide sets op dezelfde user
+        setB.UserId = user.Id;
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        var merged = await service.MergeSetsAsync(user.Id, "Samen", new List<Guid> { setA.Id, setB.Id }, deleteOriginals: true);
+
+        Assert.False(await db.Sets.AnyAsync(s => s.Id == setA.Id));
+        Assert.False(await db.Sets.AnyAsync(s => s.Id == setB.Id));
+        Assert.True(await db.Sets.AnyAsync(s => s.Id == merged.Id));
+    }
+
+    [Fact]
+    public async Task MergeSetsAsync_WeigertVerschillendeTalen()
+    {
+        using var db = NewDb();
+        var (user, setA, _) = await SeedOwnedSetAsync(db, 2);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Grieks", Language = Language.Greek };
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.MergeSetsAsync(user.Id, "X", new List<Guid> { setA.Id, setB.Id }, false));
+    }
+
+    [Fact]
+    public async Task MergeSetsAsync_WeigertNietEigenaar()
+    {
+        using var db = NewDb();
+        var (user, setA, _) = await SeedOwnedSetAsync(db, 2);
+        var otherUser = new ApplicationUser { Id = Guid.NewGuid(), UserName = "x" };
+        db.Users.Add(otherUser);
+        var setB = new Set { Id = Guid.NewGuid(), UserId = otherUser.Id, Name = "X", Language = Language.Latin };
+        db.Sets.Add(setB);
+        await db.SaveChangesAsync();
+
+        var service = new SetForkService(db);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.MergeSetsAsync(user.Id, "X", new List<Guid> { setA.Id, setB.Id }, false));
+    }
 }
