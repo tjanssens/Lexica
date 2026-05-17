@@ -49,3 +49,22 @@ public record AddWordsToSetRequest(
     int? FromNumber,
     int? ToNumber
 );
+
+public record SplitSetRequest(
+    string Name,
+    List<Guid> WordIds,
+    string Mode // "move" | "copy"
+);
+
+public record MergeSetsRequest(
+    string Name,
+    List<Guid> SetIds,
+    bool DeleteOriginals
+);
+
+public record MoveWordsRequest(
+    Guid FromSetId,
+    Guid ToSetId,
+    List<Guid> WordIds,
+    string Mode // "move" | "copy"
+);

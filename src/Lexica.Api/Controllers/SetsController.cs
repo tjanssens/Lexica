@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Lexica.Core.Entities;
 using Lexica.Core.Enums;
 using Lexica.Infrastructure.Data;
+using Lexica.Infrastructure.Services;
 using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,7 @@ namespace Lexica.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class SetsController(AppDbContext db) : ControllerBase
+public class SetsController(AppDbContext db, SetForkService forkService) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -179,7 +180,8 @@ public class SetsController(AppDbContext db) : ControllerBase
                 w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.DueDate).FirstOrDefault(),
                 w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.LastReviewed).FirstOrDefault(),
                 w.UserProgress.Where(p => p.UserId == UserId).Select(p => p.TimesReviewed).FirstOrDefault(),
-                w.UserId == UserId))
+                w.UserId == UserId,
+                w.OriginalAuthorDisplayName))
             .ToListAsync();
 
         return Ok(words);
@@ -285,5 +287,59 @@ public class SetsController(AppDbContext db) : ControllerBase
         db.SetSubscriptions.Remove(sub);
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/copy")]
+    public async Task<ActionResult<SetDto>> CopySet(Guid id)
+    {
+        try
+        {
+            var copy = await forkService.CopySetAsync(id, UserId);
+            return await Get(copy.Id);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpPost("{id:guid}/split")]
+    public async Task<ActionResult<SetDto>> SplitSet(Guid id, SplitSetRequest request)
+    {
+        try
+        {
+            var newSet = await forkService.SplitSetAsync(id, UserId, request.Name, request.WordIds, request.Mode);
+            return await Get(newSet.Id);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpPost("merge")]
+    public async Task<ActionResult<SetDto>> MergeSets(MergeSetsRequest request)
+    {
+        try
+        {
+            var merged = await forkService.MergeSetsAsync(UserId, request.Name, request.SetIds, request.DeleteOriginals);
+            return await Get(merged.Id);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpPost("move-words")]
+    public async Task<IActionResult> MoveWords(MoveWordsRequest request)
+    {
+        try
+        {
+            await forkService.MoveWordsAsync(UserId, request.FromSetId, request.ToSetId, request.WordIds, request.Mode);
+            return NoContent();
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 }
