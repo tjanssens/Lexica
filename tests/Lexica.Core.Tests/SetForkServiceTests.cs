@@ -187,4 +187,80 @@ public class SetForkServiceTests
             .ToListAsync();
         Assert.Equal(allSubscriberNumbers.Count, allSubscriberNumbers.Distinct().Count());
     }
+
+    // Helper om eigen set met N woorden te seeden
+    private static async Task<(ApplicationUser user, Set set, List<Word> words)> SeedOwnedSetAsync(AppDbContext db, int wordCount = 4)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "u", DisplayName = "U" };
+        db.Users.Add(user);
+        var words = new List<Word>();
+        for (int i = 1; i <= wordCount; i++)
+        {
+            var w = new Word { Id = Guid.NewGuid(), UserId = user.Id, Number = i, Language = Language.Latin, Term = $"w{i}", Translation = $"v{i}" };
+            words.Add(w);
+            db.Words.Add(w);
+        }
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "A", Language = Language.Latin };
+        foreach (var w in words) set.SetWords.Add(new SetWord { SetId = set.Id, WordId = w.Id });
+        db.Sets.Add(set);
+        await db.SaveChangesAsync();
+        return (user, set, words);
+    }
+
+    [Fact]
+    public async Task SplitSetAsync_MoveVerplaatstWoordenNaarNieuweSet()
+    {
+        using var db = NewDb();
+        var (user, src, words) = await SeedOwnedSetAsync(db, 4);
+        var service = new SetForkService(db);
+        var ids = words.Take(2).Select(w => w.Id).ToList();
+
+        var newSet = await service.SplitSetAsync(src.Id, user.Id, "B", ids, mode: "move");
+
+        Assert.Equal(user.Id, newSet.UserId);
+        Assert.Equal("B", newSet.Name);
+        Assert.Equal(Language.Latin, newSet.Language);
+        var srcCount = await db.SetWords.CountAsync(sw => sw.SetId == src.Id);
+        var newCount = await db.SetWords.CountAsync(sw => sw.SetId == newSet.Id);
+        Assert.Equal(2, srcCount);
+        Assert.Equal(2, newCount);
+    }
+
+    [Fact]
+    public async Task SplitSetAsync_CopyLaatBronOngewijzigd()
+    {
+        using var db = NewDb();
+        var (user, src, words) = await SeedOwnedSetAsync(db, 4);
+        var service = new SetForkService(db);
+        var ids = words.Take(2).Select(w => w.Id).ToList();
+
+        var newSet = await service.SplitSetAsync(src.Id, user.Id, "B", ids, mode: "copy");
+
+        var srcCount = await db.SetWords.CountAsync(sw => sw.SetId == src.Id);
+        var newCount = await db.SetWords.CountAsync(sw => sw.SetId == newSet.Id);
+        Assert.Equal(4, srcCount);
+        Assert.Equal(2, newCount);
+    }
+
+    [Fact]
+    public async Task SplitSetAsync_WeigertNietEigenaar()
+    {
+        using var db = NewDb();
+        var (user, src, words) = await SeedOwnedSetAsync(db);
+        var service = new SetForkService(db);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.SplitSetAsync(src.Id, Guid.NewGuid(), "B", words.Take(1).Select(w => w.Id).ToList(), "copy"));
+    }
+
+    [Fact]
+    public async Task SplitSetAsync_WeigertLegeWordIds()
+    {
+        using var db = NewDb();
+        var (user, src, _) = await SeedOwnedSetAsync(db);
+        var service = new SetForkService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.SplitSetAsync(src.Id, user.Id, "B", new List<Guid>(), "copy"));
+    }
 }
