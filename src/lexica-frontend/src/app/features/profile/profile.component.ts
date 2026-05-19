@@ -57,12 +57,6 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
 
             <div class="form-group">
               <label>Weergavenaam</label>
-              <div class="name-row">
-                <input type="text" [(ngModel)]="displayName" name="displayName" required />
-                <button type="button" class="dice-btn" (click)="rollLatinName()" title="Romeinse naam genereren">
-                  <i class="fa-solid fa-dice"></i>
-                </button>
-              </div>
               <div class="gender-row" role="radiogroup" aria-label="Geslacht voor naamgenerator">
                 <button type="button"
                         class="gender-btn"
@@ -87,6 +81,12 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
                         role="radio"
                         [attr.aria-checked]="nameGender === 'any'">
                   <i class="fa-solid fa-shuffle"></i> Geen voorkeur
+                </button>
+              </div>
+              <div class="name-row">
+                <input type="text" [(ngModel)]="displayName" name="displayName" required />
+                <button type="button" class="dice-btn" (click)="rollLatinName()" title="Romeinse naam genereren">
+                  <i class="fa-solid fa-dice"></i>
                 </button>
               </div>
             </div>
@@ -320,7 +320,7 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
     .gender-row {
       display: flex;
       gap: 0.4rem;
-      margin-top: 0.6rem;
+      margin-bottom: 0.6rem;
     }
 
     .gender-btn {
