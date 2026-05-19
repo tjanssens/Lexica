@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService, UserProfileDto } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-name-generator';
 
 @Component({
   selector: 'app-profile',
@@ -56,7 +57,38 @@ import { LoadingComponent } from '../../shared/components/loading.component';
 
             <div class="form-group">
               <label>Weergavenaam</label>
-              <input type="text" [(ngModel)]="displayName" name="displayName" required />
+              <div class="name-row">
+                <input type="text" [(ngModel)]="displayName" name="displayName" required />
+                <button type="button" class="dice-btn" (click)="rollLatinName()" title="Romeinse naam genereren">
+                  <i class="fa-solid fa-dice"></i>
+                </button>
+              </div>
+              <div class="gender-row" role="radiogroup" aria-label="Geslacht voor naamgenerator">
+                <button type="button"
+                        class="gender-btn"
+                        [class.active]="nameGender === 'male'"
+                        (click)="nameGender = 'male'"
+                        role="radio"
+                        [attr.aria-checked]="nameGender === 'male'">
+                  <i class="fa-solid fa-mars"></i> Man
+                </button>
+                <button type="button"
+                        class="gender-btn"
+                        [class.active]="nameGender === 'female'"
+                        (click)="nameGender = 'female'"
+                        role="radio"
+                        [attr.aria-checked]="nameGender === 'female'">
+                  <i class="fa-solid fa-venus"></i> Vrouw
+                </button>
+                <button type="button"
+                        class="gender-btn"
+                        [class.active]="nameGender === 'any'"
+                        (click)="nameGender = 'any'"
+                        role="radio"
+                        [attr.aria-checked]="nameGender === 'any'">
+                  <i class="fa-solid fa-shuffle"></i> Geen voorkeur
+                </button>
+              </div>
             </div>
 
             @if (profileSuccess) {
@@ -260,6 +292,61 @@ import { LoadingComponent } from '../../shared/components/loading.component';
       &:focus { outline: none; border-color: #0f3460; }
     }
 
+    .name-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: stretch;
+    }
+
+    .name-row input { flex: 1; }
+
+    .dice-btn {
+      flex-shrink: 0;
+      width: 48px;
+      background: #0f3460;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.15s;
+      &:hover { background: #1a1a2e; }
+      &:active { transform: rotate(20deg) scale(0.95); }
+    }
+
+    .gender-row {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+
+    .gender-btn {
+      flex: 1;
+      padding: 0.45rem 0.5rem;
+      background: white;
+      color: #555;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      transition: all 0.15s;
+      &:hover { border-color: #0f3460; color: #0f3460; }
+      &.active {
+        background: #0f3460;
+        color: white;
+        border-color: #0f3460;
+      }
+      i { font-size: 0.85rem; }
+    }
+
     .btn-primary {
       width: 100%;
       padding: 0.85rem;
@@ -297,6 +384,7 @@ export class ProfileComponent implements OnInit {
   profile: UserProfileDto | null = null;
 
   displayName = '';
+  nameGender: LatinNameGender = 'any';
   profilePictureUrl: string | undefined = '';
   uploadingPicture = false;
   savingProfile = false;
@@ -327,6 +415,10 @@ export class ProfileComponent implements OnInit {
       this.displayName = profile.displayName;
       this.profilePictureUrl = this.api.resolveUrl(profile.profilePictureUrl);
     });
+  }
+
+  rollLatinName() {
+    this.displayName = generateLatinName(this.nameGender, this.displayName);
   }
 
   onFileSelected(event: Event) {
