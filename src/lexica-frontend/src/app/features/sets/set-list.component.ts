@@ -211,6 +211,7 @@ export class SetListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.languageFilter = localStorage.getItem('lexica.languageFilter') ?? '';
     // Check for query parameter to open discover tab
     this.route.queryParams.subscribe(params => {
       if (params['tab'] === 'discover') {
@@ -223,6 +224,7 @@ export class SetListComponent implements OnInit {
   }
 
   loadSets() {
+    localStorage.setItem('lexica.languageFilter', this.languageFilter);
     this.loading = true;
     this.api.getSets(this.languageFilter || undefined).subscribe(s => {
       this.sets = s;
