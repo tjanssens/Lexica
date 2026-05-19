@@ -170,6 +170,19 @@ public class WordsController(AppDbContext db) : ControllerBase
         var word = await db.Words.FirstOrDefaultAsync(w => w.Id == id && w.UserId == UserId);
         if (word == null) return NotFound();
 
+        // FK's op Word staan op NoAction — handmatig opruimen voor verwijderen
+        var setWords = await db.SetWords.Where(sw => sw.WordId == id).ToListAsync();
+        db.SetWords.RemoveRange(setWords);
+
+        var groupWords = await db.GroupWords.Where(gw => gw.WordId == id).ToListAsync();
+        db.GroupWords.RemoveRange(groupWords);
+
+        var reviewLogs = await db.ReviewLogs.Where(r => r.WordId == id).ToListAsync();
+        db.ReviewLogs.RemoveRange(reviewLogs);
+
+        var progress = await db.UserWordProgress.Where(p => p.WordId == id).ToListAsync();
+        db.UserWordProgress.RemoveRange(progress);
+
         db.Words.Remove(word);
         await db.SaveChangesAsync();
         return NoContent();
