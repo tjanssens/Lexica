@@ -49,7 +49,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             </div>
             <div class="form-group">
               <label>Taal</label>
-              <select [(ngModel)]="newSet.language" name="language">
+              <select [(ngModel)]="newSet.language" name="language" (change)="onNewSetLanguageChange()">
                 <option value="Latin">Latijn</option>
                 <option value="Greek">Grieks</option>
               </select>
@@ -643,8 +643,15 @@ export class SetDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id') || this.route.snapshot.data['id'];
     if (id === 'new') {
       this.isNew = true;
+      this.newSet.language = localStorage.getItem('lexica.languageFilter') || 'Latin';
     } else if (id) {
       this.loadSet(id);
+    }
+  }
+
+  onNewSetLanguageChange() {
+    if (this.newSet.language) {
+      localStorage.setItem('lexica.languageFilter', this.newSet.language);
     }
   }
 

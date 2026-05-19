@@ -50,7 +50,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
 
       @if (tab === 'discover') {
         <div class="filter discover-filter">
-          <select [(ngModel)]="discoverLanguage" (change)="loadPublicSets()">
+          <select [(ngModel)]="discoverLanguage" (change)="onDiscoverLanguageChange()">
             <option value="">Alle talen</option>
             <option value="Latin">Latijn</option>
             <option value="Greek">Grieks</option>
@@ -211,7 +211,9 @@ export class SetListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.languageFilter = localStorage.getItem('lexica.languageFilter') ?? '';
+    const stored = localStorage.getItem('lexica.languageFilter') ?? '';
+    this.languageFilter = stored;
+    this.discoverLanguage = stored;
     // Check for query parameter to open discover tab
     this.route.queryParams.subscribe(params => {
       if (params['tab'] === 'discover') {
@@ -225,11 +227,18 @@ export class SetListComponent implements OnInit {
 
   loadSets() {
     localStorage.setItem('lexica.languageFilter', this.languageFilter);
+    this.discoverLanguage = this.languageFilter;
     this.loading = true;
     this.api.getSets(this.languageFilter || undefined).subscribe(s => {
       this.sets = s;
       this.loading = false;
     });
+  }
+
+  onDiscoverLanguageChange() {
+    localStorage.setItem('lexica.languageFilter', this.discoverLanguage);
+    this.languageFilter = this.discoverLanguage;
+    this.loadPublicSets();
   }
 
   loadPublicSets() {

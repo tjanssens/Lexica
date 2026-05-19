@@ -32,7 +32,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           @if (isNew) {
             <div class="form-group">
               <label>Taal</label>
-              <select [(ngModel)]="word.language" name="language" required>
+              <select [(ngModel)]="word.language" name="language" required (change)="onLanguageChange()">
                 <option value="Latin">Latijn</option>
                 <option value="Greek">Grieks</option>
               </select>
@@ -275,7 +275,9 @@ export class WordDetailComponent implements OnInit {
     if (id === 'new') {
       this.isNew = true;
       this.word = {
-        number: 0, language: 'Latin', term: '', translation: '',
+        number: 0,
+        language: localStorage.getItem('lexica.languageFilter') || 'Latin',
+        term: '', translation: '',
         partOfSpeech: '', notes: '', easiness: 2.5, interval: 0,
         repetitions: 0, dueDate: new Date().toISOString()
       };
@@ -284,6 +286,12 @@ export class WordDetailComponent implements OnInit {
         next: (w) => this.word = { ...w },
         error: () => this.router.navigate(['/words'])
       });
+    }
+  }
+
+  onLanguageChange() {
+    if (this.word?.language) {
+      localStorage.setItem('lexica.languageFilter', this.word.language);
     }
   }
 
