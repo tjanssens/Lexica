@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -14,8 +14,24 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     <div class="page">
       <header class="page-header">
         <a routerLink="/sets" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
-        <h1>{{ isNew ? 'Set aanmaken' : set?.name }}</h1>
-        @if (!isNew && set && set.isOwner) {
+        @if (editingName && set) {
+          <input #nameInput
+                 type="text"
+                 class="name-input"
+                 [(ngModel)]="nameDraft"
+                 (keyup.enter)="saveName()"
+                 (keyup.escape)="cancelEditName()"
+                 (blur)="saveName()"
+                 maxlength="100" />
+        } @else {
+          <h1 (click)="set?.isOwner && startEditName()" [class.editable]="set?.isOwner">
+            {{ isNew ? 'Set aanmaken' : set?.name }}
+            @if (!isNew && set?.isOwner) {
+              <i class="fa-solid fa-pen edit-icon"></i>
+            }
+          </h1>
+        }
+        @if (!isNew && set && set.isOwner && !editingName) {
           <button class="header-btn" (click)="showAddModal = true"><i class="fa-solid fa-plus"></i></button>
           <button class="header-btn delete" (click)="deleteSet()"><i class="fa-solid fa-trash"></i></button>
         }
@@ -301,7 +317,18 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     }
 
     .back-btn { color: white; text-decoration: none; font-size: 1.5rem; }
-    h1 { flex: 1; font-size: 1.25rem; margin: 0; }
+    h1 { flex: 1; font-size: 1.25rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+    h1.editable { cursor: pointer; }
+    h1.editable:hover .edit-icon { opacity: 1; }
+    .edit-icon { font-size: 0.75rem; opacity: 0.5; transition: opacity 0.15s; }
+    .name-input {
+      flex: 1; padding: 0.4rem 0.6rem; font-size: 1.1rem; font-weight: 600;
+      background: rgba(255,255,255,0.15); color: white;
+      border: 1.5px solid rgba(255,255,255,0.4); border-radius: 6px;
+      width: auto; box-sizing: border-box;
+      &:focus { outline: none; border-color: white; background: rgba(255,255,255,0.25); }
+      &::placeholder { color: rgba(255,255,255,0.6); }
+    }
     .header-btn {
       background: none; border: none; color: white; font-size: 1.2rem;
       cursor: pointer; padding: 0.25rem; opacity: 0.85;
@@ -602,6 +629,10 @@ export class SetDetailComponent implements OnInit {
   candidateSets: SetDto[] = [];
   bulkBusy = false;
   bulkError = '';
+  editingName = false;
+  nameDraft = '';
+
+  @ViewChild('nameInput') nameInputRef?: ElementRef<HTMLInputElement>;
 
   constructor(
     public api: ApiService,
@@ -733,6 +764,33 @@ export class SetDetailComponent implements OnInit {
       isPublic: this.set.isPublic,
       description: this.set.description
     }).subscribe();
+  }
+
+  startEditName() {
+    if (!this.set?.isOwner) return;
+    this.nameDraft = this.set.name;
+    this.editingName = true;
+    setTimeout(() => this.nameInputRef?.nativeElement.focus(), 0);
+  }
+
+  cancelEditName() {
+    this.editingName = false;
+    this.nameDraft = '';
+  }
+
+  saveName() {
+    if (!this.editingName || !this.set) return;
+    const trimmed = this.nameDraft.trim();
+    if (!trimmed || trimmed === this.set.name) {
+      this.cancelEditName();
+      return;
+    }
+    const newName = trimmed;
+    this.editingName = false;
+    this.api.updateSet(this.set.id, { name: newName }).subscribe({
+      next: (updated) => { this.set = updated; },
+      error: () => { this.error = 'Naam wijzigen mislukt.'; }
+    });
   }
 
   copySet() {
