@@ -138,7 +138,7 @@ jobs:
             if ($LASTEXITCODE -eq 0) {
               Write-Host "Verwijderd: $short"
             } else {
-              Write-Host "Verwijdering faalde: $short (exit $LASTEXITCODE) — overgeslagen"
+              Write-Host "Verwijdering faalde: $short (exit $LASTEXITCODE) - overgeslagen"
             }
           }
 
