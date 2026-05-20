@@ -113,8 +113,18 @@ jobs:
         shell: powershell
         if: success()
         run: |
-          $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" | Sort-Object -Descending | Select-Object -Skip 5
+          $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" |
+            Sort-Object -Descending |
+            Select-Object -Skip 5
+
           foreach ($line in $images) {
             $id = ($line -split " ")[0]
-            docker rmi -f $id 2>$null
+            docker rmi -f $id 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Verwijderd: $id"
+            } else {
+              Write-Host "Overgeslagen: $id (nog in gebruik door een actieve container)"
+            }
           }
+          # Cleanup is best-effort: faal de workflow niet als sommige images nog in gebruik zijn.
+          exit 0
