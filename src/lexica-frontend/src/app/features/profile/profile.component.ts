@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { ApiService, UserProfileDto } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { LoadingComponent } from '../../shared/components/loading.component';
@@ -160,6 +160,67 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
             <button (click)="changePassword()" [disabled]="savingPassword || !newPassword || !confirmPassword" class="btn-primary">
               {{ savingPassword ? 'Wijzigen...' : (profile.hasPassword ? 'Wachtwoord wijzigen' : 'Wachtwoord instellen') }}
             </button>
+          </section>
+
+          <!-- Mijn gegevens (GDPR) -->
+          <section class="section">
+            <h2>Mijn gegevens</h2>
+            <p class="hint">
+              Onder de GDPR heb je het recht om je gegevens te downloaden en je account te verwijderen.
+            </p>
+
+            <button (click)="exportData()" [disabled]="exportingData" class="btn-secondary">
+              <i class="fa-solid fa-download"></i>
+              {{ exportingData ? 'Bezig...' : 'Download al mijn gegevens (JSON)' }}
+            </button>
+            @if (exportError) {
+              <div class="error" style="margin-top: 0.75rem;">{{ exportError }}</div>
+            }
+          </section>
+
+          <!-- Account verwijderen -->
+          <section class="section danger-section">
+            <h2>Account verwijderen</h2>
+            <p class="hint">
+              Hiermee verwijder je je account en al je gegevens definitief. Publieke sets die je
+              hebt gedeeld blijven anoniem bestaan voor gebruikers die ze al hebben gekopieerd.
+              Deze actie kan niet ongedaan gemaakt worden.
+            </p>
+
+            @if (!showDeleteConfirm) {
+              <button (click)="showDeleteConfirm = true" class="btn-danger">
+                <i class="fa-solid fa-trash-can"></i> Account verwijderen
+              </button>
+            } @else {
+              <div class="delete-confirm">
+                <p>
+                  Typ <strong>VERWIJDEREN</strong> ter bevestiging.
+                </p>
+                <div class="form-group">
+                  <input type="text" [(ngModel)]="deleteConfirmText" name="deleteConfirmText" placeholder="VERWIJDEREN" />
+                </div>
+
+                @if (profile.hasPassword) {
+                  <div class="form-group">
+                    <label>Wachtwoord</label>
+                    <input type="password" [(ngModel)]="deletePassword" name="deletePassword" placeholder="Je huidige wachtwoord" />
+                  </div>
+                }
+
+                @if (deleteError) {
+                  <div class="error">{{ deleteError }}</div>
+                }
+
+                <div class="delete-actions">
+                  <button (click)="cancelDelete()" class="btn-secondary" [disabled]="deletingAccount">
+                    Annuleren
+                  </button>
+                  <button (click)="confirmDelete()" [disabled]="!canDelete() || deletingAccount" class="btn-danger">
+                    {{ deletingAccount ? 'Bezig...' : 'Definitief verwijderen' }}
+                  </button>
+                </div>
+              </div>
+            }
           </section>
 
           <p class="legal-link">
@@ -395,6 +456,69 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
         &:hover { color: #0f3460; }
       }
     }
+
+    .hint {
+      color: #666;
+      font-size: 0.88rem;
+      margin: 0 0 1rem;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 0.75rem;
+      background: white;
+      color: #0f3460;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      &:hover:not(:disabled) { background: #f0f3f9; }
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+
+    .danger-section {
+      border: 2px solid #fee2e2;
+      background: #fffafa;
+    }
+
+    .danger-section h2 { color: #b91c1c; }
+
+    .btn-danger {
+      padding: 0.75rem 1rem;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      &:hover:not(:disabled) { background: #b91c1c; }
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+
+    .delete-confirm {
+      background: white;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .delete-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+
+      .btn-secondary { flex: 1; padding: 0.65rem; }
+      .btn-danger { flex: 1; justify-content: center; }
+    }
   `]
 })
 export class ProfileComponent implements OnInit {
@@ -421,9 +545,19 @@ export class ProfileComponent implements OnInit {
   passwordSuccess = '';
   passwordError = '';
 
+  exportingData = false;
+  exportError = '';
+
+  showDeleteConfirm = false;
+  deleteConfirmText = '';
+  deletePassword = '';
+  deletingAccount = false;
+  deleteError = '';
+
   constructor(
     private api: ApiService,
-    private auth: AuthService
+    private auth: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -436,6 +570,63 @@ export class ProfileComponent implements OnInit {
 
   rollLatinName() {
     this.displayName = generateLatinName(this.nameGender, this.displayName);
+  }
+
+  exportData() {
+    this.exportingData = true;
+    this.exportError = '';
+
+    this.api.exportMyData().subscribe({
+      next: (blob) => {
+        this.exportingData = false;
+        const date = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lexica-export-${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        this.exportingData = false;
+        this.exportError = typeof err.error === 'string' ? err.error : 'Fout bij het downloaden van je gegevens.';
+      }
+    });
+  }
+
+  canDelete(): boolean {
+    if (this.deleteConfirmText !== 'VERWIJDEREN') return false;
+    if (this.profile?.hasPassword && !this.deletePassword) return false;
+    return true;
+  }
+
+  cancelDelete() {
+    this.showDeleteConfirm = false;
+    this.deleteConfirmText = '';
+    this.deletePassword = '';
+    this.deleteError = '';
+  }
+
+  confirmDelete() {
+    if (!this.canDelete()) return;
+
+    this.deletingAccount = true;
+    this.deleteError = '';
+
+    const password = this.profile?.hasPassword ? this.deletePassword : null;
+
+    this.api.deleteAccount(password).subscribe({
+      next: () => {
+        this.auth.logout();
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        this.deletingAccount = false;
+        this.deleteError = typeof err.error === 'string' ? err.error : 'Fout bij verwijderen van je account.';
+      }
+    });
   }
 
   onFileSelected(event: Event) {

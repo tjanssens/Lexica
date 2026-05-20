@@ -4,3 +4,4 @@ public record UserProfileDto(string DisplayName, string? ProfilePictureUrl, stri
 public record UpdateProfileRequest(string? DisplayName, string? ProfilePictureUrl);
 public record ChangeEmailRequest(string NewEmail, string Password);
 public record ChangePasswordRequest(string? CurrentPassword, string NewPassword);
+public record DeleteAccountRequest(string? Password);

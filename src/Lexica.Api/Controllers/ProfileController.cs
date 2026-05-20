@@ -1,16 +1,22 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Lexica.Core.Entities;
+using Lexica.Infrastructure.Data;
 using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lexica.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class ProfileController(UserManager<ApplicationUser> userManager, IWebHostEnvironment env) : ControllerBase
+public class ProfileController(
+    UserManager<ApplicationUser> userManager,
+    AppDbContext db,
+    IWebHostEnvironment env) : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     private const long MaxFileSize = 2 * 1024 * 1024; // 2MB
@@ -133,6 +139,225 @@ public class ProfileController(UserManager<ApplicationUser> userManager, IWebHos
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
             return BadRequest(result.Errors);
+
+        return NoContent();
+    }
+
+    [HttpGet("export-data")]
+    public async Task<IActionResult> ExportData()
+    {
+        var user = await userManager.FindByIdAsync(UserId.ToString());
+        if (user == null) return NotFound();
+
+        var userId = user.Id;
+
+        var profile = new
+        {
+            user.Id,
+            user.Email,
+            user.DisplayName,
+            user.ProfilePictureUrl,
+            user.Xp,
+            user.Level,
+            user.Streak,
+            user.LastSessionDate,
+            user.StreakFreezeAvailable,
+            user.SessionSize,
+            user.CreatedAt
+        };
+
+        var words = await db.Words
+            .Where(w => w.UserId == userId)
+            .Select(w => new
+            {
+                w.Id,
+                w.Number,
+                Language = w.Language.ToString(),
+                w.Term,
+                w.Translation,
+                w.PartOfSpeech,
+                w.SourceWordId,
+                w.OriginalAuthorDisplayName,
+                w.CreatedAt
+            })
+            .ToListAsync();
+
+        var groups = await db.Groups
+            .Where(g => g.UserId == userId)
+            .Select(g => new
+            {
+                g.Id,
+                g.Name,
+                Language = g.Language.ToString(),
+                DefaultDirection = g.DefaultDirection.ToString(),
+                g.CreatedAt,
+                WordIds = g.GroupWords.Select(gw => gw.WordId).ToList()
+            })
+            .ToListAsync();
+
+        var sets = await db.Sets
+            .Where(s => s.UserId == userId)
+            .Select(s => new
+            {
+                s.Id,
+                s.Name,
+                Language = s.Language.ToString(),
+                DefaultDirection = s.DefaultDirection.ToString(),
+                s.IsPublic,
+                s.Description,
+                s.CreatedAt,
+                WordIds = s.SetWords.Select(sw => sw.WordId).ToList()
+            })
+            .ToListAsync();
+
+        var subscriptions = await db.SetSubscriptions
+            .Where(ss => ss.UserId == userId)
+            .Select(ss => new
+            {
+                ss.SetId,
+                SetName = ss.Set.Name,
+                ss.SubscribedAt
+            })
+            .ToListAsync();
+
+        var progress = await db.UserWordProgress
+            .Where(p => p.UserId == userId)
+            .Select(p => new
+            {
+                p.WordId,
+                p.Easiness,
+                p.Interval,
+                p.Repetitions,
+                p.DueDate,
+                p.LastReviewed,
+                p.TimesReviewed,
+                p.Notes
+            })
+            .ToListAsync();
+
+        var reviewLogs = await db.ReviewLogs
+            .Where(r => r.UserId == userId)
+            .Select(r => new
+            {
+                r.Id,
+                r.WordId,
+                r.ReviewedAt,
+                Direction = r.Direction.ToString(),
+                Result = r.Result.ToString(),
+                r.EasinessBefore,
+                r.EasinessAfter,
+                r.IntervalAfter
+            })
+            .ToListAsync();
+
+        var achievements = await db.Achievements
+            .Where(a => a.UserId == userId)
+            .Select(a => new { a.Id, a.Type, a.UnlockedAt })
+            .ToListAsync();
+
+        var export = new
+        {
+            exportedAt = DateTime.UtcNow,
+            format = "Lexica data export v1",
+            note = "Volledige export van persoonsgegevens conform GDPR art. 20 (recht op overdraagbaarheid).",
+            profile,
+            words,
+            groups,
+            sets,
+            subscriptions,
+            wordProgress = progress,
+            reviewLogs,
+            achievements
+        };
+
+        var json = JsonSerializer.SerializeToUtf8Bytes(export, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        var fileName = $"lexica-export-{DateTime.UtcNow:yyyy-MM-dd}.json";
+        return File(json, "application/json", fileName);
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
+    {
+        var user = await userManager.FindByIdAsync(UserId.ToString());
+        if (user == null) return NotFound();
+
+        var hasPassword = await userManager.HasPasswordAsync(user);
+        if (hasPassword)
+        {
+            if (string.IsNullOrEmpty(request.Password))
+                return BadRequest("Wachtwoord is verplicht ter bevestiging.");
+            if (!await userManager.CheckPasswordAsync(user, request.Password))
+                return BadRequest("Ongeldig wachtwoord.");
+        }
+
+        var userId = user.Id;
+
+        var userWordIds = await db.Words
+            .Where(w => w.UserId == userId)
+            .Select(w => w.Id)
+            .ToListAsync();
+
+        var userSetIds = await db.Sets
+            .Where(s => s.UserId == userId)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        // Anonimiseer attributies in kopieën die andere gebruikers van deze user's woorden hebben gemaakt
+        if (userWordIds.Count > 0)
+        {
+            await db.Words
+                .Where(w => w.SourceWordId.HasValue && userWordIds.Contains(w.SourceWordId.Value))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(w => w.OriginalAuthorDisplayName, _ => "[verwijderde gebruiker]")
+                    .SetProperty(w => w.SourceWordId, _ => (Guid?)null));
+        }
+
+        // Verwijder in afhankelijkheidsvolgorde — FK-relaties met DeleteBehavior.NoAction expliciet opruimen
+        await db.ReviewLogs
+            .Where(r => r.UserId == userId || userWordIds.Contains(r.WordId))
+            .ExecuteDeleteAsync();
+
+        await db.UserWordProgress
+            .Where(p => p.UserId == userId || userWordIds.Contains(p.WordId))
+            .ExecuteDeleteAsync();
+
+        if (userWordIds.Count > 0)
+        {
+            await db.GroupWords
+                .Where(gw => userWordIds.Contains(gw.WordId))
+                .ExecuteDeleteAsync();
+
+            await db.SetWords
+                .Where(sw => userWordIds.Contains(sw.WordId))
+                .ExecuteDeleteAsync();
+        }
+
+        if (userSetIds.Count > 0)
+        {
+            await db.SetWords
+                .Where(sw => userSetIds.Contains(sw.SetId))
+                .ExecuteDeleteAsync();
+        }
+
+        await db.SetSubscriptions
+            .Where(ss => ss.UserId == userId || userSetIds.Contains(ss.SetId))
+            .ExecuteDeleteAsync();
+
+        await db.Sets.Where(s => s.UserId == userId).ExecuteDeleteAsync();
+        await db.Groups.Where(g => g.UserId == userId).ExecuteDeleteAsync();
+        await db.Words.Where(w => w.UserId == userId).ExecuteDeleteAsync();
+        await db.Achievements.Where(a => a.UserId == userId).ExecuteDeleteAsync();
+
+        // Profielfoto wissen
+        DeleteProfilePictureFile(userId);
+
+        var result = await userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors.First().Description);
 
         return NoContent();
     }

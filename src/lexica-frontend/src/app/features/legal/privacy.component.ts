@@ -141,9 +141,12 @@ import { RouterLink } from '@angular/router';
               bijbehorende gegevens definitief verwijderd.
             </li>
             <li>
-              <strong>Verwijderingsverzoek:</strong> als je vraagt om je account te verwijderen,
-              gebeurt dat binnen 30 dagen. Publieke sets die je hebt gedeeld kunnen — anoniem —
-              behouden blijven voor wie ze al heeft gekopieerd.
+              <strong>Account-verwijdering:</strong> je kunt je account op elk moment zelf
+              verwijderen via je profielpagina (knop "Account verwijderen"). De verwijdering
+              gebeurt onmiddellijk. Publieke sets die je hebt gedeeld blijven anoniem behouden
+              voor gebruikers die ze al hebben gekopieerd. Lukt het verwijderen via de app niet,
+              dan kan dat ook via e-mail aan <a href="mailto:hallo&#64;miljanssens.be">hallo&#64;miljanssens.be</a>;
+              we behandelen het verzoek dan binnen 30 dagen.
             </li>
             <li>
               <strong>Reservekopieën:</strong> back-ups worden na maximaal 90 dagen overschreven.
@@ -159,7 +162,7 @@ import { RouterLink } from '@angular/router';
             <li><strong>Rectificatie</strong> — onjuiste gegevens corrigeren.</li>
             <li><strong>Verwijdering</strong> ("recht om vergeten te worden") — vragen om al je gegevens te wissen.</li>
             <li><strong>Beperking</strong> — vragen om verwerking tijdelijk te stoppen.</li>
-            <li><strong>Overdraagbaarheid</strong> — je gegevens in een leesbaar formaat ontvangen (Excel-export van je woorden is daarvoor beschikbaar in de app).</li>
+            <li><strong>Overdraagbaarheid</strong> — je kunt al je gegevens in één klik downloaden als JSON-bestand via je profielpagina (knop "Download al mijn gegevens"). Daarnaast biedt de app ook een Excel-export van je woorden.</li>
             <li><strong>Bezwaar</strong> — bezwaar maken tegen verwerking op basis van gerechtvaardigd belang.</li>
             <li><strong>Toestemming intrekken</strong> — indien verwerking op toestemming berust.</li>
           </ul>
@@ -243,7 +246,11 @@ import { RouterLink } from '@angular/router';
           </p>
           <p class="version">
             <strong>Laatste update:</strong> 20 mei 2026<br />
-            <strong>Versie:</strong> 1.0
+            <strong>Versie:</strong> 1.1<br />
+            <span class="version-note">
+              Wijzigingen t.o.v. versie 1.0: in-app knoppen voor data-export
+              (GDPR art. 20) en zelf-verwijdering van het account (GDPR art. 17) toegevoegd op de profielpagina.
+            </span>
           </p>
         </section>
 
@@ -364,6 +371,14 @@ import { RouterLink } from '@angular/router';
       color: #666;
       font-size: 0.9rem;
       margin-top: 1rem;
+    }
+
+    .version-note {
+      display: block;
+      margin-top: 0.5rem;
+      font-style: italic;
+      color: #888;
+      font-size: 0.85rem;
     }
 
     .back-link {

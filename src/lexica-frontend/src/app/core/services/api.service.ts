@@ -88,6 +88,16 @@ export class ApiService {
     return this.http.put<void>(`${this.baseUrl}/profile/password`, request);
   }
 
+  exportMyData(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/profile/export-data`, { responseType: 'blob' });
+  }
+
+  deleteAccount(password: string | null): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/profile`, {
+      body: { password: password ?? null }
+    });
+  }
+
   resolveUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
     if (url.startsWith('http')) return url;
