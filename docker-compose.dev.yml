@@ -1,0 +1,30 @@
+# Lokale ontwikkel-stack: alleen Postgres.
+# De API debug je vanuit Visual Studio (F5), zodat breakpoints werken.
+# Frontend draai je via `npm start` in src/lexica-frontend.
+#
+# Start:  docker compose -f docker-compose.dev.yml up -d
+# Stop:   docker compose -f docker-compose.dev.yml down
+# Reset:  docker compose -f docker-compose.dev.yml down -v   # wist alle data
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lexica-db-dev
+    environment:
+      POSTGRES_DB: lexica
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - lexica-pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lexica"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  lexica-pgdata-dev:

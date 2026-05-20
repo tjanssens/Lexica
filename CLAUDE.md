@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Opstarten
 
-### Backend (API)
+### Snelste manier (lokaal dev)
+```powershell
+.\scripts\start-dev.ps1
+```
+Start Postgres in Docker en de frontend in een nieuw venster. Backend daarna in Visual Studio met F5 (project: `Lexica.Api`). Zie README.md voor details. Stoppen: `scripts\stop-dev.ps1` (of `-Reset` om de DB ook te wissen).
+
+### Backend (API) handmatig
 ```bash
 cd src/Lexica.Api
 dotnet run --launch-profile https
@@ -12,13 +18,19 @@ dotnet run --launch-profile https
 - HTTPS: https://localhost:7105
 - HTTP: http://localhost:5066
 
-### Frontend (Angular)
+### Frontend (Angular) handmatig
 ```bash
 cd src/lexica-frontend
 npm start
 ```
 - URL: http://localhost:4303
 - Frontend verwacht de API op http://localhost:5066
+
+### Lokale Postgres (Docker)
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+Postgres op `localhost:5432`, user/password `postgres/postgres`, db `lexica`. Migraties worden bij API-startup automatisch toegepast.
 
 ### Build
 ```bash
