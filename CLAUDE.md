@@ -105,7 +105,7 @@ src/lexica-frontend/src/app/
 
 **API-URL configuratie**: Gecentraliseerd in `src/lexica-frontend/src/environments/environment.ts`. Alle services importeren `environment.apiUrl`.
 
-**Routes** (`app.routes.ts`): Publiek: `/login`, `/register`. Beschermd (authGuard): `/`, `/words`, `/groups`, `/session`, `/import`. Alle feature-componenten zijn lazy-loaded.
+**Routes** (`app.routes.ts`): Publiek: `/login`, `/register`, `/privacy`. Beschermd (authGuard): `/`, `/words`, `/groups`, `/session`, `/import`, `/profile`, `/sets`. Alle feature-componenten zijn lazy-loaded.
 
 ### Belangrijk patroon
 - Alle API-calls gaan via `ApiService` — voeg nieuwe endpoints daar toe, niet in individuele componenten
@@ -114,3 +114,48 @@ src/lexica-frontend/src/app/
 - SM-2 algoritme zit in `Sm2Service` (`src/Lexica.Core/Services/Sm2Service.cs`)
 - Fork/split/merge/move-words logica voor sets zit in `SetForkService` (`src/Lexica.Infrastructure/Services/SetForkService.cs`)
 - Excel import/export via ClosedXML in `src/Lexica.Infrastructure/Services/`
+
+## Juridische pagina's — Privacy & Gebruiksvoorwaarden
+
+Lexica heeft twee publiek bereikbare juridische pagina's, beide in `src/lexica-frontend/src/app/features/legal/`:
+
+- **Privacyverklaring** — `privacy.component.ts`, route `/privacy`
+- **Gebruiksvoorwaarden / Terms of Service** — `terms.component.ts`, route `/terms`
+
+Verwerkingsverantwoordelijke en aanbieder van de dienst: **Mil Janssens** (Groeneweg 29, 2920 Kalmthout). Toepasselijk recht: Belgisch. Bevoegde rechtbank: arrondissement Antwerpen, afdeling Antwerpen.
+
+### BELANGRIJK voor Claude — proactieve melding verplicht
+
+Bij **elke** ontwikkeling die mogelijk de privacyverklaring of de gebruiksvoorwaarden beïnvloedt, **MOET** je dit expliciet melden aan de gebruiker **vóór** de wijziging wordt gecommit, en de betrokken juridische pagina('s) bijwerken.
+
+**Wijzigingen die de privacyverklaring raken:**
+
+- Nieuwe persoonsgegevens verzamelen of opslaan (nieuwe velden op entities, nieuwe upload-mogelijkheden, ...)
+- Nieuwe externe diensten/verwerkers toevoegen (Sentry, analytics, e-mailprovider, externe API's, CDN's, ...)
+- Cookies of localStorage-gebruik veranderen
+- Authenticatie- of identiteitsproviders toevoegen of verwijderen
+- Nieuwe manieren waarop gegevens met andere gebruikers gedeeld worden (zoals publieke sets)
+- Wijzigingen in bewaartermijnen, back-up-strategie of hostinglocatie
+- Geautomatiseerde besluitvorming of profilering toevoegen
+- Wijzigingen aan de doelgroep (bv. uitbreiding naar < 13 jarigen)
+
+**Wijzigingen die de gebruiksvoorwaarden raken:**
+
+- Nieuwe functionaliteit die het karakter van de dienst verandert (bv. AI-suggesties, integratie met externe leersystemen, deel-functies naar sociale media)
+- Wijzigingen aan het gratis karakter (introductie premium, advertenties, in-app aankopen, donaties met tegenprestatie)
+- Veranderingen in hoe gebruikers content delen of de licentie op publieke content (artikel 7 van de ToS)
+- Nieuwe verboden of toegestane gebruiken (artikel 5)
+- Wijzigingen aan account-regels of leeftijdsgrens (artikel 4)
+- Wijzigingen aan beëindigings- of schorsingsbeleid (artikel 11)
+- Aanpassingen aan aansprakelijkheidsbeperking (artikel 10)
+- Wijziging van aanbieder (Mil Janssens → andere natuurlijke persoon of rechtspersoon)
+- Verandering van hostingland of toepasselijk recht (artikel 9 en 14)
+- Nieuwe IP-claims door Lexica op gebruikersinhoud (artikel 6 en 8)
+
+**Werkwijze als zo'n wijziging gemaakt wordt:**
+
+1. Wijs de gebruiker **proactief** op de juridische impact voordat de wijziging gecommit wordt — vermeld concreet welke artikels/secties geraakt worden.
+2. Pas `privacy.component.ts` en/of `terms.component.ts` aan.
+3. Verhoog de versie en update de "Laatste update"-datum onderaan de betreffende pagina(s).
+4. Bij ingrijpende wijzigingen aan de ToS: wijs de gebruiker erop dat bestaande gebruikers volgens artikel 13 minstens 30 dagen vooraf op de hoogte gebracht moeten worden.
+5. Vermeld de juridische update expliciet in het commit-bericht.

@@ -63,6 +63,10 @@ declare const google: any;
         <p class="auth-link">
           Nog geen account? <a routerLink="/register">Registreren</a>
         </p>
+        <p class="legal-link">
+          <a routerLink="/terms">Gebruiksvoorwaarden</a> ·
+          <a routerLink="/privacy">Privacyverklaring</a>
+        </p>
       </div>
     </div>
   `,
@@ -196,6 +200,21 @@ declare const google: any;
         font-weight: 600;
 
         &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .legal-link {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+
+      a {
+        color: #888;
+        text-decoration: none;
+
+        &:hover {
+          color: #0f3460;
           text-decoration: underline;
         }
       }

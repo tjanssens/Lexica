@@ -161,6 +161,11 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
               {{ savingPassword ? 'Wijzigen...' : (profile.hasPassword ? 'Wachtwoord wijzigen' : 'Wachtwoord instellen') }}
             </button>
           </section>
+
+          <p class="legal-link">
+            <a routerLink="/terms">Gebruiksvoorwaarden</a> ·
+            <a routerLink="/privacy">Privacyverklaring</a>
+          </p>
         </div>
       }
     </div>
@@ -377,6 +382,18 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
       border-radius: 8px;
       font-size: 0.85rem;
       margin-bottom: 1rem;
+    }
+
+    .legal-link {
+      text-align: center;
+      font-size: 0.8rem;
+      margin: 0.5rem 0 0;
+
+      a {
+        color: #888;
+        text-decoration: underline;
+        &:hover { color: #0f3460; }
+      }
     }
   `]
 })
