@@ -113,18 +113,34 @@ jobs:
         shell: powershell
         if: success()
         run: |
-          $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" |
+          # Verzamel image-IDs die nu in gebruik zijn door (lopende of gestopte) containers.
+          $inUse = @{}
+          $containerIds = & cmd /c "docker ps -aq 2>nul"
+          foreach ($cid in $containerIds) {
+            if ([string]::IsNullOrWhiteSpace($cid)) { continue }
+            $imageId = & cmd /c "docker inspect --format ""{{.Image}}"" $cid 2>nul"
+            if ($imageId) { $inUse[$imageId.Trim()] = $true }
+          }
+
+          # Kandidaten: alle images van dit repo, behalve de 5 nieuwste.
+          $candidates = & cmd /c "docker images ${{ env.IMAGE_NAME }} --no-trunc --format ""{{.ID}} {{.CreatedAt}}"" 2>nul" |
             Sort-Object -Descending |
             Select-Object -Skip 5
 
-          foreach ($line in $images) {
+          foreach ($line in $candidates) {
             $id = ($line -split " ")[0]
-            docker rmi -f $id 2>$null | Out-Null
+            $short = $id.Substring([math]::Max(0, $id.Length - 12))
+            if ($inUse.ContainsKey($id)) {
+              Write-Host "Overgeslagen: $short (nog in gebruik door een container)"
+              continue
+            }
+            & cmd /c "docker rmi -f $id >nul 2>&1"
             if ($LASTEXITCODE -eq 0) {
-              Write-Host "Verwijderd: $id"
+              Write-Host "Verwijderd: $short"
             } else {
-              Write-Host "Overgeslagen: $id (nog in gebruik door een actieve container)"
+              Write-Host "Verwijdering faalde: $short (exit $LASTEXITCODE) — overgeslagen"
             }
           }
-          # Cleanup is best-effort: faal de workflow niet als sommige images nog in gebruik zijn.
+
+          # Cleanup is best-effort: faal de workflow nooit op deze stap.
           exit 0
