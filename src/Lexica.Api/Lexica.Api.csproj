@@ -23,4 +23,17 @@
     <ProjectReference Include="..\Lexica.Shared\Lexica.Shared.csproj" />
   </ItemGroup>
 
+  <!--
+    Bij F5/Build vanuit Visual Studio: zorg dat Postgres en de frontend draaien.
+    Wordt overgeslagen voor CLI-builds (dotnet build/test), CI, en niet-Debug.
+    Uitschakelen: set env var LEXICA_SKIP_DEV_DEPS=true
+  -->
+  <Target Name="LexicaEnsureDevDependencies"
+          BeforeTargets="Build"
+          Condition="'$(BuildingInsideVisualStudio)' == 'true' AND '$(Configuration)' == 'Debug' AND '$(OS)' == 'Windows_NT' AND '$(LEXICA_SKIP_DEV_DEPS)' != 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\ensure-dev-deps.ps1&quot;"
+          IgnoreExitCode="true"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
 </Project>

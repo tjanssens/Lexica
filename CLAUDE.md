@@ -5,10 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Opstarten
 
 ### Snelste manier (lokaal dev)
+**Alleen F5 in Visual Studio op `Lexica.Api`** — dat is genoeg. Een MSBuild-target in `Lexica.Api.csproj` roept `scripts\ensure-dev-deps.ps1` aan bij elke Build vanuit VS en zorgt dat:
+- de Postgres-container draait (start hem op als hij stil ligt, wacht tot healthy)
+- de Angular dev-server draait op poort 4303 (start hem in een nieuw venster als hij ontbreekt)
+
+Idempotent: als alles al loopt, doet de stap niets. Conditie in het target: `BuildingInsideVisualStudio == true` + Debug + Windows, zodat CLI-builds (`dotnet build`/`test`) en CI dit overslaan.
+
+Uitschakelen voor 1 sessie: `$env:LEXICA_SKIP_DEV_DEPS = "true"` voor je VS opent.
+
+Alternatief (CLI of niet vanuit VS):
 ```powershell
 .\scripts\start-dev.ps1
 ```
-Start Postgres in Docker en de frontend in een nieuw venster. Backend daarna in Visual Studio met F5 (project: `Lexica.Api`). Zie README.md voor details. Stoppen: `scripts\stop-dev.ps1` (of `-Reset` om de DB ook te wissen).
+Stoppen: `scripts\stop-dev.ps1` (of `-Reset` om de DB ook te wissen).
 
 ### Backend (API) handmatig
 ```bash
