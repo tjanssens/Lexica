@@ -64,14 +64,11 @@ declare const google: any;
           </button>
         </form>
 
-        <!-- Google registratie tijdelijk verborgen; later opnieuw activeren -->
-        <!--
         <div class="divider">
           <span>of</span>
         </div>
 
         <div #googleBtn class="google-btn-container"></div>
-        -->
 
         <p class="auth-link">
           Al een account? <a routerLink="/login">Inloggen</a>
@@ -247,8 +244,7 @@ export class RegisterComponent implements AfterViewInit {
   constructor(private auth: AuthService, private ngZone: NgZone) {}
 
   ngAfterViewInit() {
-    // Google registratie tijdelijk uitgeschakeld; later opnieuw activeren
-    // this.renderGoogleButton();
+    this.renderGoogleButton();
   }
 
   private renderGoogleButton() {

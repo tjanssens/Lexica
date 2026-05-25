@@ -51,14 +51,11 @@ declare const google: any;
           </button>
         </form>
 
-        <!-- Google login tijdelijk verborgen; later opnieuw activeren -->
-        <!--
         <div class="divider">
           <span>of</span>
         </div>
 
         <div #googleBtn class="google-btn-container"></div>
-        -->
 
         <p class="auth-link">
           <a routerLink="/forgot-password">Wachtwoord vergeten?</a>
@@ -235,8 +232,7 @@ export class LoginComponent implements AfterViewInit {
   constructor(private auth: AuthService, private ngZone: NgZone) {}
 
   ngAfterViewInit() {
-    // Google login tijdelijk uitgeschakeld; later opnieuw activeren
-    // this.renderGoogleButton();
+    this.renderGoogleButton();
   }
 
   private renderGoogleButton() {
