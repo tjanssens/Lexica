@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>21af3e87-2bea-4509-97ab-b7fda1e76f50</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,12 +29,8 @@
     Wordt overgeslagen voor CLI-builds (dotnet build/test), CI, en niet-Debug.
     Uitschakelen: set env var LEXICA_SKIP_DEV_DEPS=true
   -->
-  <Target Name="LexicaEnsureDevDependencies"
-          BeforeTargets="Build"
-          Condition="'$(BuildingInsideVisualStudio)' == 'true' AND '$(Configuration)' == 'Debug' AND '$(OS)' == 'Windows_NT' AND '$(LEXICA_SKIP_DEV_DEPS)' != 'true'">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\ensure-dev-deps.ps1&quot;"
-          IgnoreExitCode="true"
-          ContinueOnError="WarnAndContinue" />
+  <Target Name="LexicaEnsureDevDependencies" BeforeTargets="Build" Condition="'$(BuildingInsideVisualStudio)' == 'true' AND '$(Configuration)' == 'Debug' AND '$(OS)' == 'Windows_NT' AND '$(LEXICA_SKIP_DEV_DEPS)' != 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\ensure-dev-deps.ps1&quot;" IgnoreExitCode="true" ContinueOnError="WarnAndContinue" />
   </Target>
 
 </Project>

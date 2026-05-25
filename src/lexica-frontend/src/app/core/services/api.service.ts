@@ -22,6 +22,14 @@ export class ApiService {
     return this.http.post<AuthResponse>(`${this.baseUrl}/auth/google`, { idToken });
   }
 
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/auth/forgot-password`, { email });
+  }
+
+  resetPassword(email: string, token: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/auth/reset-password`, { email, token, newPassword });
+  }
+
   // Words
   getWords(language?: string): Observable<WordDto[]> {
     let params = new HttpParams();

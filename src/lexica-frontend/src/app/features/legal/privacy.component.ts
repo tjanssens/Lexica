@@ -90,6 +90,10 @@ import { RouterLink } from '@angular/router';
                 <td>Uitvoering van de overeenkomst</td>
               </tr>
               <tr>
+                <td>Account-gerelateerde communicatie (bv. wachtwoord-reset)</td>
+                <td>Uitvoering van de overeenkomst</td>
+              </tr>
+              <tr>
                 <td>Je leerinhoud opslaan en tonen</td>
                 <td>Uitvoering van de overeenkomst</td>
               </tr>
@@ -125,6 +129,13 @@ import { RouterLink } from '@angular/router';
             <li>
               <strong>Hosting:</strong> Lexica draait op een private server in België.
               Je gegevens verlaten de Europese Economische Ruimte niet.
+            </li>
+            <li>
+              <strong>Combell (e-mail):</strong> transactionele e-mails (zoals een
+              wachtwoord-reset-link) worden verstuurd via de SMTP-server van Combell NV
+              (Skaldenstraat 121, 9042 Gent, België). Combell verwerkt enkel je e-mailadres
+              en de inhoud van de e-mail om de mail te bezorgen. Combell is een Belgische
+              verwerker; je gegevens verlaten de Europese Economische Ruimte niet.
             </li>
           </ul>
         </section>
@@ -245,11 +256,12 @@ import { RouterLink } from '@angular/router';
             hoogte via e-mail of een melding in de app.
           </p>
           <p class="version">
-            <strong>Laatste update:</strong> 20 mei 2026<br />
-            <strong>Versie:</strong> 1.1<br />
+            <strong>Laatste update:</strong> 25 mei 2026<br />
+            <strong>Versie:</strong> 1.2<br />
             <span class="version-note">
-              Wijzigingen t.o.v. versie 1.0: in-app knoppen voor data-export
-              (GDPR art. 20) en zelf-verwijdering van het account (GDPR art. 17) toegevoegd op de profielpagina.
+              Wijzigingen t.o.v. versie 1.1: Combell toegevoegd als verwerker voor
+              transactionele e-mail (wachtwoord-reset), en bijbehorend verwerkingsdoel
+              "account-gerelateerde communicatie" expliciet vermeld.
             </span>
           </p>
         </section>

@@ -61,6 +61,9 @@ declare const google: any;
         -->
 
         <p class="auth-link">
+          <a routerLink="/forgot-password">Wachtwoord vergeten?</a>
+        </p>
+        <p class="auth-link">
           Nog geen account? <a routerLink="/register">Registreren</a>
         </p>
         <p class="legal-link">

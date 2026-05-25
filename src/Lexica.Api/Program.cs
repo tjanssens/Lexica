@@ -1,5 +1,6 @@
 using System.Text;
 using Lexica.Core.Entities;
+using Lexica.Core.Services;
 using Lexica.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -49,6 +50,10 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<ExcelExportService>();
 builder.Services.AddScoped<SetForkService>();
+
+// Email (SMTP)
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
