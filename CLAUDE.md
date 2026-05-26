@@ -136,6 +136,28 @@ src/lexica-frontend/src/app/
 - Fork/split/merge/move-words logica voor sets zit in `SetForkService` (`src/Lexica.Infrastructure/Services/SetForkService.cs`)
 - Excel import/export via ClosedXML in `src/Lexica.Infrastructure/Services/`
 
+## Geparkeerde features
+
+### Wachtwoord-reset (forgot-password)
+
+De wachtwoord-vergeten flow is volledig gebouwd en gecommit (mei 2026, commits `0198803` + `eb66940`), maar **niet productie-actief**.
+
+**Wat zit er in de code:**
+- Backend endpoints: `POST /api/auth/forgot-password` + `POST /api/auth/reset-password` in `AuthController.cs`
+- E-mail service: `SmtpEmailService` (MailKit) + `SmtpOptions` in `src/Lexica.Infrastructure/Services/`
+- Frontend componenten: `forgot-password.component.ts` + `reset-password.component.ts`, routes `/forgot-password` en `/reset-password`
+- "Wachtwoord vergeten?" link onder het login-formulier
+- Privacyverklaring v1.2 vermeldt Combell als verwerker voor transactionele mail
+
+**Waarom geparkeerd:** Google Sign-In is de primaire login-methode. Wachtwoord-reset is alleen relevant voor users die met e-mail+wachtwoord registreren — randgeval dat momenteel geen prioriteit heeft.
+
+**Wat ontbreekt om hem live te krijgen:**
+1. **SPF + DKIM** instellen op `jnssns.com` in Combell DNS (anders komen mails in spam)
+2. **`Smtp:Password`** zetten op de productieserver via `appsettings.Production.json` of env var `Smtp__Password=…` (lokaal staat hij in `dotnet user-secrets`)
+3. **`App:FrontendUrl`** op productie aanpassen naar de echte URL (staat nu nog op `http://localhost:4303`)
+
+Bij wijzigingen aan auth-flows niet voorstellen om dit te debuggen of "af te maken" tenzij Tom expliciet vraagt om reactivering.
+
 ## Juridische pagina's — Privacy & Gebruiksvoorwaarden
 
 Lexica heeft twee publiek bereikbare juridische pagina's, beide in `src/lexica-frontend/src/app/features/legal/`:
