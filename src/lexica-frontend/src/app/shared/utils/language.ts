@@ -11,7 +11,7 @@ export const LANGUAGES: LanguageOption[] = [
   { value: 'Latin', label: 'Latijn', icon: 'fa-landmark' },
   { value: 'Greek', label: 'Grieks', icon: 'fa-scroll' },
   { value: 'English', label: 'Engels', icon: 'fa-mug-hot' },
-  { value: 'French', label: 'Frans', icon: 'fa-wine-glass' },
+  { value: 'French', label: 'Frans', icon: 'fa-archway' },
 ];
 
 /** Geeft de Nederlandse weergavenaam voor een taalcode (valt terug op de code zelf). */
