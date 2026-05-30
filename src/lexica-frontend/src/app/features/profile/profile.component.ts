@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { ApiService, UserProfileDto } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PushNotificationService } from '../../core/services/push-notification.service';
 import { LoadingComponent } from '../../shared/components/loading.component';
 import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-name-generator';
 
@@ -101,6 +102,50 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
             <button (click)="saveProfile()" [disabled]="savingProfile" class="btn-primary">
               {{ savingProfile ? 'Opslaan...' : 'Profiel opslaan' }}
             </button>
+          </section>
+
+          <!-- Notifications -->
+          <section class="section">
+            <h2>Notificaties</h2>
+
+            @if (!notifSupported) {
+              <p class="notif-hint">
+                Push-notificaties worden niet ondersteund in deze browser. Op iPhone werkt het pas
+                nadat je Lexica via "Deel → Zet op beginscherm" als app toevoegt.
+              </p>
+            } @else {
+              <label class="toggle-row">
+                <span>
+                  <strong>Notificaties</strong>
+                  <small>Herinneringen om je woordjes te oefenen</small>
+                </span>
+                <input type="checkbox" [checked]="notif.subscribed" [disabled]="notifBusy" (change)="toggleMaster($event)" />
+              </label>
+
+              @if (notif.subscribed) {
+                <label class="toggle-row sub">
+                  <span>Dagelijkse herinnering <small>rond 16:00</small></span>
+                  <input type="checkbox" [(ngModel)]="notif.dailyReminderEnabled" name="dailyReminder" [disabled]="notifBusy" (change)="savePreferences()" />
+                </label>
+                <label class="toggle-row sub">
+                  <span>Avond-herinnering <small>rond 20:00, als je nog niet oefende</small></span>
+                  <input type="checkbox" [(ngModel)]="notif.eveningNudgeEnabled" name="eveningNudge" [disabled]="notifBusy" (change)="savePreferences()" />
+                </label>
+
+                <button type="button" class="btn-secondary notif-test" [disabled]="notifBusy" (click)="sendTestNotification()">
+                  <i class="fa-solid fa-bell"></i> Stuur testnotificatie
+                </button>
+              }
+
+              @if (notifPermissionDenied) {
+                <p class="notif-hint">
+                  Je hebt notificaties geblokkeerd in je browser. Zet ze weer aan via het slotje/instellingen
+                  naast de adresbalk en probeer opnieuw.
+                </p>
+              }
+              @if (notifSuccess) { <div class="success">{{ notifSuccess }}</div> }
+              @if (notifError) { <div class="error">{{ notifError }}</div> }
+            }
           </section>
 
           <!-- Email -->
@@ -519,6 +564,22 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
       .btn-secondary { flex: 1; padding: 0.65rem; }
       .btn-danger { flex: 1; justify-content: center; }
     }
+
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: 0.6rem 0; cursor: pointer;
+      span { display: flex; flex-direction: column; }
+      strong { font-size: 0.95rem; color: #1a1a2e; }
+      small { font-size: 0.78rem; color: #888; }
+      input { width: 20px; height: 20px; accent-color: #0f3460; cursor: pointer; flex-shrink: 0; }
+    }
+    .toggle-row.sub {
+      padding: 0.45rem 0 0.45rem 0.5rem;
+      border-top: 1px solid #f0f0f0;
+      span { font-size: 0.88rem; color: #333; }
+    }
+    .notif-hint { font-size: 0.82rem; color: #888; line-height: 1.4; margin: 0.25rem 0 0; }
+    .notif-test { margin-top: 0.85rem; }
   `]
 })
 export class ProfileComponent implements OnInit {
@@ -554,17 +615,74 @@ export class ProfileComponent implements OnInit {
   deletingAccount = false;
   deleteError = '';
 
+  notif = { subscribed: false, dailyReminderEnabled: true, eveningNudgeEnabled: true };
+  notifBusy = false;
+  notifSuccess = '';
+  notifError = '';
+
   constructor(
     private api: ApiService,
     private auth: AuthService,
-    private router: Router
+    private router: Router,
+    private push: PushNotificationService
   ) {}
+
+  get notifSupported(): boolean {
+    return this.push.supported;
+  }
+
+  get notifPermissionDenied(): boolean {
+    return this.push.permission === 'denied';
+  }
 
   ngOnInit() {
     this.api.getProfile().subscribe(profile => {
       this.profile = profile;
       this.displayName = profile.displayName;
       this.profilePictureUrl = this.api.resolveUrl(profile.profilePictureUrl);
+    });
+
+    if (this.push.supported) {
+      this.push.status().subscribe(status => this.notif = status);
+    }
+  }
+
+  toggleMaster(event: Event) {
+    const enable = (event.target as HTMLInputElement).checked;
+    this.notifBusy = true;
+    this.notifError = '';
+    this.notifSuccess = '';
+
+    const action = enable ? this.push.enable() : this.push.disable();
+    action
+      .then(() => {
+        this.notif.subscribed = enable;
+        this.notifSuccess = enable ? 'Notificaties staan aan.' : 'Notificaties staan uit.';
+      })
+      .catch(err => {
+        this.notif.subscribed = !enable; // toggle terugzetten
+        this.notifError = err?.message ?? 'Notificaties wijzigen mislukt.';
+      })
+      .finally(() => this.notifBusy = false);
+  }
+
+  savePreferences() {
+    this.notifBusy = true;
+    this.notifError = '';
+    this.notifSuccess = '';
+    this.push.setPreferences(this.notif.dailyReminderEnabled, this.notif.eveningNudgeEnabled).subscribe({
+      next: status => { this.notif = status; this.notifSuccess = 'Voorkeuren opgeslagen.'; this.notifBusy = false; },
+      error: () => { this.notifError = 'Voorkeuren opslaan mislukt.'; this.notifBusy = false; }
+    });
+  }
+
+  sendTestNotification() {
+    this.notifBusy = true;
+    this.notifError = '';
+    this.notifSuccess = '';
+    this.push.sendTest().subscribe({
+      next: () => { this.notifSuccess = 'Testnotificatie verstuurd.'; this.notifBusy = false; },
+      error: () => { this.notifError = 'Testnotificatie versturen mislukt.'; this.notifBusy = false; }
     });
   }
 

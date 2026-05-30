@@ -55,6 +55,12 @@ builder.Services.AddScoped<SetForkService>();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
+// Push notifications
+builder.Services.Configure<PushOptions>(builder.Configuration.GetSection(PushOptions.SectionName));
+builder.Services.AddScoped<IPushSender, WebPushSender>();
+builder.Services.AddScoped<DailyReminderService>();
+builder.Services.AddHostedService<DailyNotificationBackgroundService>();
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 

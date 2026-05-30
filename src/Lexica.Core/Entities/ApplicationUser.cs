@@ -14,8 +14,13 @@ public class ApplicationUser : IdentityUser<Guid>
     public int SessionSize { get; set; } = 20;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Notificatie-voorkeuren (push). Standaard aan; gebruiker kan ze per type uitzetten.
+    public bool DailyReminderEnabled { get; set; } = true;
+    public bool EveningNudgeEnabled { get; set; } = true;
+
     public ICollection<Word> Words { get; set; } = [];
     public ICollection<Group> Groups { get; set; } = [];
     public ICollection<Achievement> Achievements { get; set; } = [];
     public ICollection<SetSubscription> SetSubscriptions { get; set; } = [];
+    public ICollection<PushSubscription> PushSubscriptions { get; set; } = [];
 }

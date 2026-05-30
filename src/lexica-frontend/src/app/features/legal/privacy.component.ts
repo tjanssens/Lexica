@@ -67,7 +67,16 @@ import { RouterLink } from '@angular/router';
           <ul>
             <li>Reviewlog per woord (wanneer, in welke richting, of je het wist)</li>
             <li>Statistieken: XP, niveau, dag-streak, laatste sessiedatum</li>
-            <li>Voorkeursinstellingen (sessiegrootte, taalkeuze)</li>
+            <li>Voorkeursinstellingen (sessiegrootte, taalkeuze, notificatie-voorkeuren)</li>
+          </ul>
+
+          <h3>Notificaties (alleen als je ze aanzet)</h3>
+          <ul>
+            <li>
+              Een push-abonnement van je browser of toestel — een technische sleutel (geen naam of
+              e-mailadres) waarmee we je studieherinneringen kunnen bezorgen. Je geeft hier eerst
+              uitdrukkelijk toestemming voor en kunt het op elk moment weer uitzetten in je profiel.
+            </li>
           </ul>
 
           <h3>Wat we <em>niet</em> verwerken</h3>
@@ -136,6 +145,14 @@ import { RouterLink } from '@angular/router';
               (Skaldenstraat 121, 9042 Gent, België). Combell verwerkt enkel je e-mailadres
               en de inhoud van de e-mail om de mail te bezorgen. Combell is een Belgische
               verwerker; je gegevens verlaten de Europese Economische Ruimte niet.
+            </li>
+            <li>
+              <strong>Push-bezorgdiensten (alleen bij notificaties):</strong> als je push-notificaties
+              aanzet, verloopt de bezorging via de push-dienst van je browser — <strong>Google</strong>
+              (Chrome/Android), <strong>Mozilla</strong> (Firefox) of <strong>Apple</strong> (Safari).
+              Zij ontvangen het versleutelde bericht en de technische sleutel om het op je toestel af te
+              leveren, maar geen inhoud van je account. Deze diensten kunnen zich buiten de EER bevinden.
+              Zet je notificaties uit, dan wordt niets met hen gedeeld.
             </li>
           </ul>
         </section>
@@ -257,10 +274,12 @@ import { RouterLink } from '@angular/router';
           </p>
           <p class="version">
             <strong>Laatste update:</strong> 30 mei 2026<br />
-            <strong>Versie:</strong> 1.3<br />
+            <strong>Versie:</strong> 1.4<br />
             <span class="version-note">
-              Wijzigingen t.o.v. versie 1.2: ondersteunde talen uitgebreid met Engels en Frans;
-              de opgeslagen taalvoorkeur kan nu ook deze talen bevatten.
+              Wijzigingen t.o.v. versie 1.3: optionele push-notificaties toegevoegd. We bewaren
+              hiervoor een push-abonnement (technische sleutel) en de bezorging verloopt via de
+              push-dienst van je browser (Google, Mozilla of Apple). Notificaties zijn opt-in en
+              kunnen altijd weer uitgezet worden.
             </span>
           </p>
         </section>

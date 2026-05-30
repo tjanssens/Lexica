@@ -251,8 +251,11 @@ import { RouterLink } from '@angular/router';
 
         <p class="version">
           <strong>Laatste update:</strong> 30 mei 2026<br />
-          <strong>Versie:</strong> 1.1<br />
+          <strong>Versie:</strong> 1.2<br />
           <span class="version-note">
+            Wijzigingen t.o.v. versie 1.1: optionele push-notificaties toegevoegd (studieherinneringen).
+            Deze functie is gratis, vereist je toestemming en kan op elk moment in je profiel worden uitgezet.
+            <br />
             Wijzigingen t.o.v. versie 1.0: omschrijving van de dienst verruimd — naast Latijn en
             Grieks ondersteunt Lexica nu ook Engelse en Franse woordenschat.
           </span>

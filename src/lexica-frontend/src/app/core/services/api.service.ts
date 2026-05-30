@@ -173,6 +173,28 @@ export class ApiService {
   moveWords(request: { fromSetId: string; toSetId: string; wordIds: string[]; mode: 'move' | 'copy' }): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/sets/move-words`, request);
   }
+
+  // Notifications (Web Push)
+  getNotificationStatus(): Observable<NotificationStatusDto> {
+    return this.http.get<NotificationStatusDto>(`${this.baseUrl}/notifications/status`);
+  }
+
+  subscribeToNotifications(request: { endpoint: string; p256dh: string; auth: string }): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/notifications/subscribe`, request);
+  }
+
+  unsubscribeFromNotifications(endpoint?: string): Observable<void> {
+    const params = endpoint ? new HttpParams().set('endpoint', endpoint) : undefined;
+    return this.http.delete<void>(`${this.baseUrl}/notifications/subscribe`, { params });
+  }
+
+  updateNotificationPreferences(request: { dailyReminderEnabled: boolean; eveningNudgeEnabled: boolean }): Observable<NotificationStatusDto> {
+    return this.http.put<NotificationStatusDto>(`${this.baseUrl}/notifications/preferences`, request);
+  }
+
+  sendTestNotification(): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/notifications/test`, {});
+  }
 }
 
 // Interfaces
@@ -322,6 +344,12 @@ export interface UpdateSetRequest {
   defaultDirection?: string;
   isPublic?: boolean;
   description?: string;
+}
+
+export interface NotificationStatusDto {
+  subscribed: boolean;
+  dailyReminderEnabled: boolean;
+  eveningNudgeEnabled: boolean;
 }
 
 export interface AddWordsToSetRequest {

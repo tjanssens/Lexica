@@ -18,6 +18,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<UserWordProgress> UserWordProgress => Set<UserWordProgress>();
     public DbSet<ReviewLog> ReviewLogs => Set<ReviewLog>();
     public DbSet<Achievement> Achievements => Set<Achievement>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<NotificationDispatch> NotificationDispatches => Set<NotificationDispatch>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -96,6 +98,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasKey(p => new { p.UserId, p.WordId });
             e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(p => p.Word).WithMany(w => w.UserProgress).HasForeignKey(p => p.WordId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // PushSubscription
+        builder.Entity<PushSubscription>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasOne(p => p.User).WithMany(u => u.PushSubscriptions).HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.UserId, p.Endpoint }).IsUnique();
+        });
+
+        // NotificationDispatch (dedupe-guard voor geplande jobs)
+        builder.Entity<NotificationDispatch>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.Property(d => d.JobType).HasConversion<string>();
+            e.HasIndex(d => new { d.JobType, d.RunDate }).IsUnique();
         });
     }
 }

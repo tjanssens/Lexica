@@ -1,7 +1,7 @@
 {
   "name": "Lexica",
   "short_name": "Lexica",
-  "description": "Leer Latijnse en Griekse woordenschat met spaced repetition.",
+  "description": "Leer woordenschat (Latijn, Grieks, Engels, Frans) met spaced repetition.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
