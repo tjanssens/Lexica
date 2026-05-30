@@ -217,7 +217,7 @@ import { RouterLink } from '@angular/router';
           </p>
           <ul>
             <li>Een inlog-token (JWT) om je sessie te onthouden, max. 7 dagen geldig</li>
-            <li>Je gekozen taalvoorkeur (Latijn/Grieks)</li>
+            <li>Je gekozen taalvoorkeur (Latijn, Grieks, Engels of Frans)</li>
           </ul>
           <p>
             Deze opslag is technisch noodzakelijk om de app te laten functioneren en valt onder de
@@ -256,12 +256,11 @@ import { RouterLink } from '@angular/router';
             hoogte via e-mail of een melding in de app.
           </p>
           <p class="version">
-            <strong>Laatste update:</strong> 25 mei 2026<br />
-            <strong>Versie:</strong> 1.2<br />
+            <strong>Laatste update:</strong> 30 mei 2026<br />
+            <strong>Versie:</strong> 1.3<br />
             <span class="version-note">
-              Wijzigingen t.o.v. versie 1.1: Combell toegevoegd als verwerker voor
-              transactionele e-mail (wachtwoord-reset), en bijbehorend verwerkingsdoel
-              "account-gerelateerde communicatie" expliciet vermeld.
+              Wijzigingen t.o.v. versie 1.2: ondersteunde talen uitgebreid met Engels en Frans;
+              de opgeslagen taalvoorkeur kan nu ook deze talen bevatten.
             </span>
           </p>
         </section>

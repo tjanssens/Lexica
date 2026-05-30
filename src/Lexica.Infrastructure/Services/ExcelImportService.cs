@@ -186,6 +186,12 @@ public class ExcelImportService(AppDbContext db)
         ["la"] = Language.Latin,
         ["latin"] = Language.Latin,
         ["latijn"] = Language.Latin,
+        ["en"] = Language.English,
+        ["english"] = Language.English,
+        ["engels"] = Language.English,
+        ["fr"] = Language.French,
+        ["french"] = Language.French,
+        ["frans"] = Language.French,
     };
 
     private static bool TryParseLanguage(string? value, out Language lang)

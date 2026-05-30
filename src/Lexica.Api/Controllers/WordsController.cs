@@ -65,7 +65,7 @@ public class WordsController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<WordDto>> Create(CreateWordRequest request)
     {
         if (!Enum.TryParse<Language>(request.Language, true, out var lang))
-            return BadRequest("Ongeldige taal. Gebruik 'Latin' of 'Greek'.");
+            return BadRequest("Ongeldige taal. Gebruik 'Latin', 'Greek', 'English' of 'French'.");
 
         var exists = await db.Words.AnyAsync(w =>
             w.UserId == UserId && w.Language == lang && w.Number == request.Number);

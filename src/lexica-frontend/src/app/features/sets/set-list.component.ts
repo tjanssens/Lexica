@@ -5,6 +5,7 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ApiService, SetDto, PublicSetDto } from '../../core/services/api.service';
 import { SetItemComponent } from '../../shared/components/set-item.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { LANGUAGES, languageIcon } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-set-list',
@@ -27,8 +28,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
         <div class="filter">
           <select [(ngModel)]="languageFilter" (change)="loadSets()">
             <option value="">Alle talen</option>
-            <option value="Latin">Latijn</option>
-            <option value="Greek">Grieks</option>
+            @for (l of languages; track l.value) {
+              <option [value]="l.value">{{ l.label }}</option>
+            }
           </select>
         </div>
 
@@ -52,8 +54,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
         <div class="filter discover-filter">
           <select [(ngModel)]="discoverLanguage" (change)="onDiscoverLanguageChange()">
             <option value="">Alle talen</option>
-            <option value="Latin">Latijn</option>
-            <option value="Greek">Grieks</option>
+            @for (l of languages; track l.value) {
+              <option [value]="l.value">{{ l.label }}</option>
+            }
           </select>
           <input type="text" [(ngModel)]="searchQuery" (input)="loadPublicSets()" placeholder="Zoek sets..." class="search-input" />
         </div>
@@ -65,7 +68,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             @for (pset of publicSets; track pset.id) {
               <div class="public-set-item">
                 <a [routerLink]="pset.isSubscribed ? ['/sets', pset.id] : null" class="public-set-info" [class.clickable]="pset.isSubscribed">
-                  <span class="set-lang"><i class="fa-solid" [class.fa-landmark]="pset.language === 'Latin'" [class.fa-scroll]="pset.language !== 'Latin'"></i></span>
+                  <span class="set-lang"><i class="fa-solid" [ngClass]="langIcon(pset.language)"></i></span>
                   <div class="set-details">
                     <strong>{{ pset.name }}</strong>
                     @if (pset.description) {
@@ -204,6 +207,8 @@ export class SetListComponent implements OnInit {
   searchQuery = '';
   tab: 'mine' | 'discover' = 'mine';
   loading = true;
+  languages = LANGUAGES;
+  langIcon = languageIcon;
 
   constructor(
     public api: ApiService,

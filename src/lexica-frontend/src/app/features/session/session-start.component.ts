@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, SetDto } from '../../core/services/api.service';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { languageIcon } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-session-start',
@@ -27,7 +28,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
               <input type="checkbox"
                 [checked]="selectedSetIds.has(set.id)"
                 (change)="toggleSet(set.id)" />
-              <span class="group-lang"><i class="fa-solid" [class.fa-landmark]="set.language === 'Latin'" [class.fa-scroll]="set.language !== 'Latin'"></i></span>
+              <span class="group-lang"><i class="fa-solid" [ngClass]="langIcon(set.language)"></i></span>
               <div class="group-info">
                 <strong>{{ set.name }}</strong>
                 <span>{{ set.wordCount }} woorden</span>
@@ -186,6 +187,7 @@ export class SessionStartComponent implements OnInit {
   mode: 'quick' | 'intensive' = 'intensive';
   loadingSets = true;
   loading = false;
+  langIcon = languageIcon;
 
   constructor(
     private api: ApiService,

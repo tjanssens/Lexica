@@ -106,7 +106,7 @@ Lexica.Shared         → DTOs (gedeeld tussen lagen)
 - `GroupWord` — Many-to-many koppeltabel
 - `ReviewLog`, `Achievement`
 
-**Enums** (`src/Lexica.Core/Enums/`): `Language` (Greek, Latin), `Direction` (NlToTarget, TargetToNl), `ReviewResult` (Unknown, Known, Easy)
+**Enums** (`src/Lexica.Core/Enums/`): `Language` (Latin, Greek, English, French), `Direction` (NlToTarget, TargetToNl), `ReviewResult` (Unknown, Known, Easy)
 
 **Authenticatie**: JWT Bearer tokens + Google Sign-In. Token wordt 7 dagen bewaard. Config in `appsettings.json`.
 
