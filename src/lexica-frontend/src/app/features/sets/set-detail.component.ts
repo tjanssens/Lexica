@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, SetDto, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-set-detail',
@@ -50,8 +51,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             <div class="form-group">
               <label>Taal</label>
               <select [(ngModel)]="newSet.language" name="language" (change)="onNewSetLanguageChange()">
-                <option value="Latin">Latijn</option>
-                <option value="Greek">Grieks</option>
+                @for (l of languages; track l.value) {
+                  <option [value]="l.value">{{ l.label }}</option>
+                }
               </select>
             </div>
             <div class="form-group">
@@ -104,7 +106,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
 
           <div class="stats-card">
             <div class="stats-header">
-              <span class="stats-lang"><i class="fa-solid" [class.fa-landmark]="set.language === 'Latin'" [class.fa-scroll]="set.language !== 'Latin'"></i> {{ set.language === 'Latin' ? 'Latijn' : 'Grieks' }}</span>
+              <span class="stats-lang"><i class="fa-solid" [ngClass]="langIcon(set.language)"></i> {{ langLabel(set.language) }}</span>
               <span class="stats-total">{{ set.wordCount }} woorden</span>
             </div>
 
@@ -284,7 +286,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                       <div class="set-picker">
                         @for (s of candidateSets; track s.id) {
                           <button type="button" class="set-picker-item" (click)="submitMoveToExisting(s)" [disabled]="bulkBusy">
-                            <span class="picker-lang"><i class="fa-solid" [class.fa-landmark]="s.language === 'Latin'" [class.fa-scroll]="s.language !== 'Latin'"></i></span>
+                            <span class="picker-lang"><i class="fa-solid" [ngClass]="langIcon(s.language)"></i></span>
                             <span class="picker-info">
                               <strong>{{ s.name }}</strong>
                               <small>{{ s.wordCount }} {{ s.wordCount === 1 ? 'woord' : 'woorden' }}</small>
@@ -630,6 +632,9 @@ export class SetDetailComponent implements OnInit {
   bulkError = '';
   editingName = false;
   nameDraft = '';
+  languages = LANGUAGES;
+  langIcon = languageIcon;
+  langLabel = languageLabel;
 
   @ViewChild('nameInput') nameInputRef?: ElementRef<HTMLInputElement>;
 

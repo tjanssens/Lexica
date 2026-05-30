@@ -15,7 +15,7 @@ declare const google: any;
     <div class="auth-container">
       <div class="auth-card">
         <h1>Lexica</h1>
-        <p class="subtitle">Latijn & Grieks vocabulaire</p>
+        <p class="subtitle">Latijn, Grieks, Engels & Frans vocabulaire</p>
 
         <form (ngSubmit)="onSubmit()" class="auth-form">
           <div class="form-group">

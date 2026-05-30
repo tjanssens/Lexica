@@ -22,7 +22,7 @@ import { RouterLink } from '@angular/router';
 
         <section>
           <h2>1. Wie is Lexica?</h2>
-          <p>Lexica is een leerapp voor Latijnse en Griekse woordenschat, aangeboden door:</p>
+          <p>Lexica is een leerapp voor vreemdetalenwoordenschat (waaronder Latijn, Grieks, Engels en Frans), aangeboden door:</p>
           <address>
             <strong>Mil Janssens</strong><br />
             Groeneweg 29<br />
@@ -39,7 +39,7 @@ import { RouterLink } from '@angular/router';
         <section>
           <h2>2. Definities</h2>
           <ul>
-            <li><strong>Lexica / De Dienst:</strong> de web-applicatie voor het leren van Latijnse en Griekse vocabulaire, beschikbaar via deze website.</li>
+            <li><strong>Lexica / De Dienst:</strong> de web-applicatie voor het leren van vreemdetalenvocabulaire (waaronder Latijn, Grieks, Engels en Frans), beschikbaar via deze website.</li>
             <li><strong>Account:</strong> jouw persoonlijke profiel waarmee je gebruik kunt maken van Lexica.</li>
             <li><strong>Inhoud:</strong> woorden, vertalingen, groepen, sets en alle andere informatie die door gebruikers wordt toegevoegd.</li>
             <li><strong>Publieke Set:</strong> een verzameling woorden die je als gebruiker uitdrukkelijk hebt gedeeld zodat andere gebruikers ze kunnen ontdekken en kopiëren.</li>
@@ -250,8 +250,12 @@ import { RouterLink } from '@angular/router';
         </section>
 
         <p class="version">
-          <strong>Laatste update:</strong> 20 mei 2026<br />
-          <strong>Versie:</strong> 1.0
+          <strong>Laatste update:</strong> 30 mei 2026<br />
+          <strong>Versie:</strong> 1.1<br />
+          <span class="version-note">
+            Wijzigingen t.o.v. versie 1.0: omschrijving van de dienst verruimd — naast Latijn en
+            Grieks ondersteunt Lexica nu ook Engelse en Franse woordenschat.
+          </span>
         </p>
 
         <p class="back-link">
@@ -340,6 +344,14 @@ import { RouterLink } from '@angular/router';
       margin-top: 2rem;
       padding-top: 1rem;
       border-top: 1px solid #e8e8e8;
+    }
+
+    .version-note {
+      display: block;
+      margin-top: 0.5rem;
+      font-style: italic;
+      color: #888;
+      font-size: 0.85rem;
     }
 
     .back-link {

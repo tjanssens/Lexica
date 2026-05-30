@@ -6,6 +6,7 @@ import { forkJoin } from 'rxjs';
 import { ApiService, SetDto, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-word-list',
@@ -29,8 +30,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
       <div class="filters">
         <select [(ngModel)]="languageFilter" (change)="loadWords()">
           <option value="">Alle talen</option>
-          <option value="Latin">Latijn</option>
-          <option value="Greek">Grieks</option>
+          @for (l of languages; track l.value) {
+            <option [value]="l.value">{{ l.label }}</option>
+          }
         </select>
         <input
           type="text"
@@ -157,7 +159,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                        autofocus />
                 <p class="wizard-hint">
                   {{ selectedWordIds.size }} {{ selectedWordIds.size === 1 ? 'woord' : 'woorden' }}
-                  in <strong>{{ selectionLanguage === 'Latin' ? 'Latijn' : 'Grieks' }}</strong>.
+                  in <strong>{{ langLabel(selectionLanguage) }}</strong>.
                 </p>
                 @if (bulkError) { <div class="error">{{ bulkError }}</div> }
                 <div class="wizard-actions">
@@ -183,7 +185,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
                   <div class="set-picker">
                     @for (s of candidateSets; track s.id) {
                       <button type="button" class="set-picker-item" (click)="submitAddToSet(s)" [disabled]="bulkBusy">
-                        <span class="picker-lang"><i class="fa-solid" [class.fa-landmark]="s.language === 'Latin'" [class.fa-scroll]="s.language !== 'Latin'"></i></span>
+                        <span class="picker-lang"><i class="fa-solid" [ngClass]="langIcon(s.language)"></i></span>
                         <span class="picker-info">
                           <strong>{{ s.name }}</strong>
                           <small>{{ s.wordCount }} {{ s.wordCount === 1 ? 'woord' : 'woorden' }}</small>
@@ -436,6 +438,9 @@ export class WordListComponent implements OnInit {
   bulkBusy = false;
   bulkError = '';
   selectionLanguage: string | null = null;
+  languages = LANGUAGES;
+  langIcon = languageIcon;
+  langLabel = languageLabel;
 
   constructor(private api: ApiService) {}
 

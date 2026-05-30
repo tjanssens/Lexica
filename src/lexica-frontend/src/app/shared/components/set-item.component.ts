@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService, SetDto } from '../../core/services/api.service';
+import { languageIcon } from '../utils/language';
 
 @Component({
   selector: 'app-set-item',
@@ -9,7 +10,7 @@ import { ApiService, SetDto } from '../../core/services/api.service';
   imports: [CommonModule, RouterLink],
   template: `
     <a [routerLink]="['/sets', set.id]" class="set-item">
-      <span class="set-lang"><i class="fa-solid" [class.fa-landmark]="set.language === 'Latin'" [class.fa-scroll]="set.language !== 'Latin'"></i></span>
+      <span class="set-lang"><i class="fa-solid" [ngClass]="langIcon(set.language)"></i></span>
       <div class="set-info">
         <div class="name-row">
           <strong>{{ set.name }}</strong>
@@ -105,6 +106,7 @@ import { ApiService, SetDto } from '../../core/services/api.service';
 })
 export class SetItemComponent {
   @Input({ required: true }) set!: SetDto;
+  langIcon = languageIcon;
 
   constructor(public api: ApiService) {}
 

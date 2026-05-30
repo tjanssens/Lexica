@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, WordDto } from '../../core/services/api.service';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { LANGUAGES, languageLabel } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-word-detail',
@@ -33,20 +34,21 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             <div class="form-group">
               <label>Taal</label>
               <select [(ngModel)]="word.language" name="language" required (change)="onLanguageChange()">
-                <option value="Latin">Latijn</option>
-                <option value="Greek">Grieks</option>
+                @for (l of languages; track l.value) {
+                  <option [value]="l.value">{{ l.label }}</option>
+                }
               </select>
             </div>
           } @else {
             <div class="form-group">
               <label>Taal</label>
-              <input type="text" [value]="word.language === 'Latin' ? 'Latijn' : 'Grieks'" disabled />
+              <input type="text" [value]="langLabel(word.language)" disabled />
             </div>
           }
 
           <div class="form-group">
             <label>Term</label>
-            <input type="text" [(ngModel)]="word.term" name="term" required placeholder="Latijns/Grieks woord" />
+            <input type="text" [(ngModel)]="word.term" name="term" required placeholder="Woord in de doeltaal" />
           </div>
 
           <div class="form-group">
@@ -263,6 +265,8 @@ export class WordDetailComponent implements OnInit {
   saving = false;
   error = '';
   showSm2Modal = false;
+  languages = LANGUAGES;
+  langLabel = languageLabel;
 
   constructor(
     private api: ApiService,
