@@ -34,6 +34,10 @@ services:
       Jwt__Issuer: "Lexica"
       Jwt__Audience: "LexicaApp"
       Jwt__Key: "${JWT_KEY:?JWT_KEY ontbreekt in .env}"
+      # Web Push (VAPID). Publieke sleutel is niet geheim; private sleutel via .env.
+      # Moet matchen met vapidPublicKey in environment.production.ts.
+      Push__PublicKey: "BO6YZX74ukLrw71OA0sosncCIyH3qpUEaCAayRQqQdwBzzx_Fbvgnj43Ip6eIig8jbPQ2fMOuE3W1KIgrB02rJs"
+      Push__PrivateKey: "${PUSH_PRIVATE_KEY:-}"
     ports:
       - "8080:8080"
     depends_on:
