@@ -79,7 +79,7 @@ public class DailyReminderService(
                 title,
                 body,
                 icon = "/assets/icons/icon-192.png",
-                badge = "/assets/icons/icon-192.png",
+                badge = "/assets/icons/badge-96.png",
                 data = new { url = "/session" }
             }
         });

@@ -99,7 +99,7 @@ public class NotificationsController(AppDbContext db, IPushSender sender) : Cont
                 title = "Lexica test 🔔",
                 body = "Top! Je notificaties werken.",
                 icon = "/assets/icons/icon-192.png",
-                badge = "/assets/icons/icon-192.png",
+                badge = "/assets/icons/badge-96.png",
                 data = new { url = "/" }
             }
         });
