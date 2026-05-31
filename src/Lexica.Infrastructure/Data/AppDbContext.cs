@@ -113,7 +113,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         {
             e.HasKey(d => d.Id);
             e.Property(d => d.JobType).HasConversion<string>();
-            e.HasIndex(d => new { d.JobType, d.RunDate }).IsUnique();
+            e.HasIndex(d => new { d.UserId, d.JobType, d.RunDate }).IsUnique();
         });
     }
 }

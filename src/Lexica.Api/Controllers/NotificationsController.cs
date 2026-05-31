@@ -24,7 +24,7 @@ public class NotificationsController(AppDbContext db, IPushSender sender) : Cont
         if (user == null) return NotFound();
 
         var subscribed = await db.PushSubscriptions.AnyAsync(s => s.UserId == UserId);
-        return Ok(new NotificationStatusDto(subscribed, user.DailyReminderEnabled, user.EveningNudgeEnabled));
+        return Ok(ToStatusDto(user, subscribed));
     }
 
     [HttpPost("subscribe")]
@@ -70,20 +70,34 @@ public class NotificationsController(AppDbContext db, IPushSender sender) : Cont
         return NoContent();
     }
 
-    /// <summary>Per type aan/uit zetten zonder het abonnement op te zeggen.</summary>
+    /// <summary>Per type aan/uit zetten en het tijdstip kiezen, zonder het abonnement op te zeggen.</summary>
     [HttpPut("preferences")]
     public async Task<ActionResult<NotificationStatusDto>> UpdatePreferences(NotificationPreferencesRequest req)
     {
+        if (!TimeOnly.TryParseExact(req.DailyReminderTime, "HH:mm", out var dailyTime))
+            return BadRequest("Ongeldig tijdstip voor de dagelijkse herinnering.");
+        if (!TimeOnly.TryParseExact(req.EveningNudgeTime, "HH:mm", out var nudgeTime))
+            return BadRequest("Ongeldig tijdstip voor de avond-herinnering.");
+
         var user = await db.Users.FindAsync(UserId);
         if (user == null) return NotFound();
 
         user.DailyReminderEnabled = req.DailyReminderEnabled;
         user.EveningNudgeEnabled = req.EveningNudgeEnabled;
+        user.DailyReminderTime = dailyTime;
+        user.EveningNudgeTime = nudgeTime;
         await db.SaveChangesAsync();
 
         var subscribed = await db.PushSubscriptions.AnyAsync(s => s.UserId == UserId);
-        return Ok(new NotificationStatusDto(subscribed, user.DailyReminderEnabled, user.EveningNudgeEnabled));
+        return Ok(ToStatusDto(user, subscribed));
     }
+
+    private static NotificationStatusDto ToStatusDto(ApplicationUser user, bool subscribed) => new(
+        subscribed,
+        user.DailyReminderEnabled,
+        user.EveningNudgeEnabled,
+        user.DailyReminderTime.ToString("HH:mm"),
+        user.EveningNudgeTime.ToString("HH:mm"));
 
     [HttpPost("test")]
     public async Task<IActionResult> Test()

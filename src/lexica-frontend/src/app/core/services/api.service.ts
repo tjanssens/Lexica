@@ -188,7 +188,7 @@ export class ApiService {
     return this.http.delete<void>(`${this.baseUrl}/notifications/subscribe`, { params });
   }
 
-  updateNotificationPreferences(request: { dailyReminderEnabled: boolean; eveningNudgeEnabled: boolean }): Observable<NotificationStatusDto> {
+  updateNotificationPreferences(request: { dailyReminderEnabled: boolean; eveningNudgeEnabled: boolean; dailyReminderTime: string; eveningNudgeTime: string }): Observable<NotificationStatusDto> {
     return this.http.put<NotificationStatusDto>(`${this.baseUrl}/notifications/preferences`, request);
   }
 
@@ -350,6 +350,9 @@ export interface NotificationStatusDto {
   subscribed: boolean;
   dailyReminderEnabled: boolean;
   eveningNudgeEnabled: boolean;
+  /** Tijdstip in "HH:mm" (Europe/Brussels). */
+  dailyReminderTime: string;
+  eveningNudgeTime: string;
 }
 
 export interface AddWordsToSetRequest {

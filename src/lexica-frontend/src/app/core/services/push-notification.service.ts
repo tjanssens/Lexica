@@ -67,8 +67,13 @@ export class PushNotificationService {
     await firstValueFrom(this.api.unsubscribeFromNotifications(endpoint));
   }
 
-  setPreferences(dailyReminderEnabled: boolean, eveningNudgeEnabled: boolean): Observable<NotificationStatusDto> {
-    return this.api.updateNotificationPreferences({ dailyReminderEnabled, eveningNudgeEnabled });
+  setPreferences(prefs: {
+    dailyReminderEnabled: boolean;
+    eveningNudgeEnabled: boolean;
+    dailyReminderTime: string;
+    eveningNudgeTime: string;
+  }): Observable<NotificationStatusDto> {
+    return this.api.updateNotificationPreferences(prefs);
   }
 
   sendTest(): Observable<void> {

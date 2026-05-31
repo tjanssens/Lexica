@@ -123,14 +123,31 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
               </label>
 
               @if (notif.subscribed) {
-                <label class="toggle-row sub">
-                  <span>Dagelijkse herinnering <small>rond 16:00</small></span>
-                  <input type="checkbox" [(ngModel)]="notif.dailyReminderEnabled" name="dailyReminder" [disabled]="notifBusy" (change)="savePreferences()" />
-                </label>
-                <label class="toggle-row sub">
-                  <span>Avond-herinnering <small>rond 20:00, als je nog niet oefende</small></span>
-                  <input type="checkbox" [(ngModel)]="notif.eveningNudgeEnabled" name="eveningNudge" [disabled]="notifBusy" (change)="savePreferences()" />
-                </label>
+                <div class="notif-pref">
+                  <label class="toggle-row sub">
+                    <span>Dagelijkse herinnering <small>elke dag op het gekozen tijdstip</small></span>
+                    <input type="checkbox" [(ngModel)]="notif.dailyReminderEnabled" name="dailyReminder" [disabled]="notifBusy" (change)="savePreferences()" />
+                  </label>
+                  @if (notif.dailyReminderEnabled) {
+                    <div class="time-row">
+                      <span>Tijdstip</span>
+                      <input type="time" step="300" [(ngModel)]="notif.dailyReminderTime" name="dailyReminderTime" [disabled]="notifBusy" (change)="savePreferences()" />
+                    </div>
+                  }
+                </div>
+
+                <div class="notif-pref">
+                  <label class="toggle-row sub">
+                    <span>Avond-herinnering <small>op het gekozen tijdstip, als je die dag nog niet oefende</small></span>
+                    <input type="checkbox" [(ngModel)]="notif.eveningNudgeEnabled" name="eveningNudge" [disabled]="notifBusy" (change)="savePreferences()" />
+                  </label>
+                  @if (notif.eveningNudgeEnabled) {
+                    <div class="time-row">
+                      <span>Tijdstip</span>
+                      <input type="time" step="300" [(ngModel)]="notif.eveningNudgeTime" name="eveningNudgeTime" [disabled]="notifBusy" (change)="savePreferences()" />
+                    </div>
+                  }
+                </div>
 
                 <button type="button" class="btn-secondary notif-test" [disabled]="notifBusy" (click)="sendTestNotification()">
                   <i class="fa-solid fa-bell"></i> Stuur testnotificatie
@@ -578,6 +595,18 @@ import { generateLatinName, LatinNameGender } from '../../shared/utils/latin-nam
       border-top: 1px solid #f0f0f0;
       span { font-size: 0.88rem; color: #333; }
     }
+    .notif-pref .toggle-row.sub { border-top: 1px solid #f0f0f0; }
+    .time-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.1rem 0 0.5rem 0.5rem;
+      span { font-size: 0.82rem; color: #888; }
+      input[type="time"] {
+        width: auto; padding: 0.4rem 0.6rem; font-size: 0.9rem;
+        border: 2px solid #e0e0e0; border-radius: 8px;
+        &:focus { outline: none; border-color: #0f3460; }
+        &:disabled { opacity: 0.6; }
+      }
+    }
     .notif-hint { font-size: 0.82rem; color: #888; line-height: 1.4; margin: 0.25rem 0 0; }
     .notif-test { margin-top: 0.85rem; }
   `]
@@ -615,7 +644,7 @@ export class ProfileComponent implements OnInit {
   deletingAccount = false;
   deleteError = '';
 
-  notif = { subscribed: false, dailyReminderEnabled: true, eveningNudgeEnabled: true };
+  notif = { subscribed: false, dailyReminderEnabled: true, eveningNudgeEnabled: true, dailyReminderTime: '16:00', eveningNudgeTime: '20:00' };
   notifBusy = false;
   notifSuccess = '';
   notifError = '';
@@ -670,7 +699,12 @@ export class ProfileComponent implements OnInit {
     this.notifBusy = true;
     this.notifError = '';
     this.notifSuccess = '';
-    this.push.setPreferences(this.notif.dailyReminderEnabled, this.notif.eveningNudgeEnabled).subscribe({
+    this.push.setPreferences({
+      dailyReminderEnabled: this.notif.dailyReminderEnabled,
+      eveningNudgeEnabled: this.notif.eveningNudgeEnabled,
+      dailyReminderTime: this.notif.dailyReminderTime,
+      eveningNudgeTime: this.notif.eveningNudgeTime
+    }).subscribe({
       next: status => { this.notif = status; this.notifSuccess = 'Voorkeuren opgeslagen.'; this.notifBusy = false; },
       error: () => { this.notifError = 'Voorkeuren opslaan mislukt.'; this.notifBusy = false; }
     });

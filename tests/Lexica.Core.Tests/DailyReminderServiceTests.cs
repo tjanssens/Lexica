@@ -10,6 +10,9 @@ namespace Lexica.Core.Tests;
 
 public class DailyReminderServiceTests
 {
+    private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+    private static readonly TimeOnly LateEvening = new(23, 0); // voorbij beide standaardtijdstippen
+
     private static AppDbContext NewDb([System.Runtime.CompilerServices.CallerMemberName] string name = "")
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -88,7 +91,7 @@ public class DailyReminderServiceTests
         var sender = new FakeSender();
         var service = new DailyReminderService(db, sender, NullLogger<DailyReminderService>.Instance);
 
-        await service.SendDailyRemindersAsync();
+        await service.SendDailyRemindersAsync(Today, LateEvening);
 
         Assert.Equal(new[] { willNotify.Id }, sender.NotifiedUserIds);
     }
@@ -114,8 +117,48 @@ public class DailyReminderServiceTests
         var sender = new FakeSender();
         var service = new DailyReminderService(db, sender, NullLogger<DailyReminderService>.Instance);
 
-        await service.SendEveningNudgesAsync();
+        await service.SendEveningNudgesAsync(Today, LateEvening);
 
         Assert.Equal(new[] { notPracticed.Id }, sender.NotifiedUserIds);
+    }
+
+    [Fact]
+    public async Task DailyReminder_not_sent_before_users_chosen_time()
+    {
+        using var db = NewDb();
+
+        var user = AddUser(db, daily: true);
+        user.DailyReminderTime = new TimeOnly(18, 0);
+        AddSubscription(db, user.Id);
+        AddDueWord(db, user.Id);
+        await db.SaveChangesAsync();
+
+        var sender = new FakeSender();
+        var service = new DailyReminderService(db, sender, NullLogger<DailyReminderService>.Instance);
+
+        await service.SendDailyRemindersAsync(Today, new TimeOnly(17, 30)); // nog vóór het gekozen uur
+        Assert.Empty(sender.NotifiedUserIds);
+
+        await service.SendDailyRemindersAsync(Today, new TimeOnly(18, 0)); // op tijd
+        Assert.Equal(new[] { user.Id }, sender.NotifiedUserIds);
+    }
+
+    [Fact]
+    public async Task DailyReminder_sent_at_most_once_per_day_per_user()
+    {
+        using var db = NewDb();
+
+        var user = AddUser(db, daily: true);
+        AddSubscription(db, user.Id);
+        AddDueWord(db, user.Id);
+        await db.SaveChangesAsync();
+
+        var sender = new FakeSender();
+        var service = new DailyReminderService(db, sender, NullLogger<DailyReminderService>.Instance);
+
+        await service.SendDailyRemindersAsync(Today, LateEvening);
+        await service.SendDailyRemindersAsync(Today, LateEvening); // tweede tick dezelfde dag
+
+        Assert.Equal(new[] { user.Id }, sender.NotifiedUserIds); // dedup: maar één melding
     }
 }

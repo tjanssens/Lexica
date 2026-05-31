@@ -18,6 +18,10 @@ public class ApplicationUser : IdentityUser<Guid>
     public bool DailyReminderEnabled { get; set; } = true;
     public bool EveningNudgeEnabled { get; set; } = true;
 
+    // Tijdstip (Europe/Brussels) waarop elke notificatie vertrekt. Per gebruiker instelbaar.
+    public TimeOnly DailyReminderTime { get; set; } = new(16, 0);
+    public TimeOnly EveningNudgeTime { get; set; } = new(20, 0);
+
     public ICollection<Word> Words { get; set; } = [];
     public ICollection<Group> Groups { get; set; } = [];
     public ICollection<Achievement> Achievements { get; set; } = [];
