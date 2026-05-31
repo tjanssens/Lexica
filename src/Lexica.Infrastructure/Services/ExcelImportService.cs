@@ -4,12 +4,18 @@ using Lexica.Core.Enums;
 using Lexica.Infrastructure.Data;
 using Lexica.Shared.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Lexica.Infrastructure.Services;
 
-public class ExcelImportService(AppDbContext db)
+public class ExcelImportService(AppDbContext db, IMemoryCache cache)
 {
-    private static readonly Dictionary<string, List<ImportPreviewRow>> _sessions = new();
+    // Preview-resultaten worden tijdelijk bewaard tot de gebruiker bevestigt. IMemoryCache is
+    // thread-safe (dit is een Scoped service, dus geen gedeelde instantiestate mogelijk) en ruimt
+    // niet-bevestigde sessies automatisch op na de vervaltijd.
+    private static readonly TimeSpan SessionLifetime = TimeSpan.FromMinutes(30);
+
+    private static string SessionKey(string sessionId) => $"import-session:{sessionId}";
 
     public async Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId)
     {
@@ -104,7 +110,7 @@ public class ExcelImportService(AppDbContext db)
         }
 
         var sessionId = Guid.NewGuid().ToString();
-        _sessions[sessionId] = rows;
+        cache.Set(SessionKey(sessionId), rows, SessionLifetime);
 
         return new ImportPreviewResponse(
             rows,
@@ -118,7 +124,7 @@ public class ExcelImportService(AppDbContext db)
 
     public async Task<ImportResultResponse> Confirm(string sessionId, Guid userId, bool updateDuplicates)
     {
-        if (!_sessions.TryGetValue(sessionId, out var rows))
+        if (!cache.TryGetValue(SessionKey(sessionId), out List<ImportPreviewRow>? rows) || rows is null)
             throw new InvalidOperationException("Import sessie niet gevonden.");
 
         int imported = 0, updated = 0, skipped = 0, errors = 0;
@@ -220,7 +226,7 @@ public class ExcelImportService(AppDbContext db)
         }
 
         await db.SaveChangesAsync();
-        _sessions.Remove(sessionId);
+        cache.Remove(SessionKey(sessionId));
 
         return new ImportResultResponse(imported, updated, skipped, errors);
     }

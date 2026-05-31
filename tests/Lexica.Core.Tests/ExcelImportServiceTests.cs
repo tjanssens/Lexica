@@ -4,6 +4,7 @@ using Lexica.Core.Enums;
 using Lexica.Infrastructure.Data;
 using Lexica.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Xunit;
 
 namespace Lexica.Core.Tests;
@@ -17,6 +18,9 @@ public class ExcelImportServiceTests
             .Options;
         return new AppDbContext(options);
     }
+
+    private static ExcelImportService NewService(AppDbContext db) =>
+        new(db, new MemoryCache(new MemoryCacheOptions()));
 
     // Bouwt een in-memory Excel-stream met vaste koppen en de meegegeven rijen (number, language, term, translation).
     private static Stream BuildExcel(params (string? number, string language, string term, string translation)[] rows)
@@ -62,7 +66,7 @@ public class ExcelImportServiceTests
             (1, Language.French, "un cinéma"),
             (2, Language.French, "un hôpital"),
             (3, Language.French, "un restaurant"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         // Import begint (zoals in het probleem) ook bij nummer 1, maar met andere termen.
         using var excel = BuildExcel(
@@ -88,7 +92,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (20, Language.French, "savoir"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(
             ("125", "Frans", "savoir", "weten, kennen, kunnen"),
@@ -107,7 +111,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (1, Language.French, "avoir"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(("9", "Frans", "  AVOIR ", "hebben"));
 
@@ -121,7 +125,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (1, Language.French, "côté"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(("9", "Frans", "cote", "notering"));
 
@@ -135,7 +139,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db); // geen bestaande woorden
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(
             ("1", "Frans", "avoir", "hebben"),
@@ -155,7 +159,7 @@ public class ExcelImportServiceTests
         var user = await SeedUserAsync(db,
             (5, Language.French, "bonjour"),
             (10, Language.English, "hello"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(
             ("1", "Frans", "merci", "dank je"),
@@ -172,7 +176,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (3, Language.French, "un restaurant"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(
             ("1", "Frans", "avoir", "hebben"),
@@ -196,7 +200,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (1, Language.French, "savoir"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(("99", "Frans", "savoir", "weten, kennen, kunnen"));
 
@@ -216,7 +220,7 @@ public class ExcelImportServiceTests
     {
         using var db = NewDb();
         var user = await SeedUserAsync(db, (1, Language.French, "savoir"));
-        var service = new ExcelImportService(db);
+        var service = NewService(db);
 
         using var excel = BuildExcel(("99", "Frans", "savoir", "andere vertaling"));
 

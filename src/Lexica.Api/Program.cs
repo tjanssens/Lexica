@@ -47,6 +47,7 @@ builder.Services.AddAuthentication(options =>
     });
 
 // Services
+builder.Services.AddMemoryCache(); // tijdelijke opslag van import-preview-sessies
 builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<ExcelExportService>();
 builder.Services.AddScoped<SetForkService>();
