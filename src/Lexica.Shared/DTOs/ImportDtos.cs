@@ -2,6 +2,7 @@ namespace Lexica.Shared.DTOs;
 
 public record ImportPreviewRow(
     int RowNumber,
+    int? OriginalNumber,
     int Number,
     string Language,
     string Term,
@@ -14,6 +15,7 @@ public record ImportPreviewRow(
     DateTime? DueDate,
     string? Group,
     bool IsDuplicate,
+    bool NumberChanged,
     List<string> Errors
 );
 
@@ -22,6 +24,7 @@ public record ImportPreviewResponse(
     int ValidCount,
     int DuplicateCount,
     int ErrorCount,
+    int RenumberedCount,
     string SessionId
 );
 

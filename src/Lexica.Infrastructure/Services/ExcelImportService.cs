@@ -14,11 +14,24 @@ public class ExcelImportService(AppDbContext db)
     public async Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId)
     {
         var rows = new List<ImportPreviewRow>();
+
+        // Bestaande woorden bepalen de identiteit (genormaliseerde term + taal) en
+        // het startpunt voor de hernummering (hoogste nummer per taal).
         var existingWords = await db.Words
             .Where(w => w.UserId == userId)
-            .Select(w => new { w.Language, w.Number })
+            .Select(w => new { w.Language, w.Number, w.Term })
             .ToListAsync();
-        var existingSet = existingWords.ToHashSet();
+
+        var existingTerms = new HashSet<(Language, string)>();
+        var nextNumber = new Dictionary<Language, int>();
+        foreach (var w in existingWords)
+        {
+            existingTerms.Add((w.Language, NormalizeTerm(w.Term)));
+            nextNumber[w.Language] = Math.Max(nextNumber.GetValueOrDefault(w.Language), w.Number);
+        }
+
+        // Termen die binnen dít bestand al een nummer toegewezen kregen (in-bestand-dubbels).
+        var seenInFile = new HashSet<(Language, string)>();
 
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheets.First();
@@ -50,9 +63,12 @@ public class ExcelImportService(AppDbContext db)
             var dueDateStr = GetCellValue(wsRow, columns, "due_date");
             var group = GetCellValue(wsRow, columns, "group");
 
-            if (string.IsNullOrEmpty(numberStr) && string.IsNullOrEmpty(term)) continue;
+            // Lege rij overslaan. Het nummer is niet langer leidend — de term is de identiteit.
+            if (string.IsNullOrEmpty(term) && string.IsNullOrEmpty(translation)) continue;
 
-            if (!int.TryParse(numberStr, out var number)) errors.Add("Ongeldig nummer");
+            // Nummer uit Excel is enkel informatief; het wordt bij import opnieuw toegekend.
+            int? originalNumber = int.TryParse(numberStr, out var parsedNumber) ? parsedNumber : null;
+
             if (string.IsNullOrEmpty(term)) errors.Add("Term is verplicht");
             if (string.IsNullOrEmpty(translation)) errors.Add("Vertaling is verplicht");
             if (!TryParseLanguage(langStr, out var lang)) errors.Add("Ongeldige taal");
@@ -62,12 +78,29 @@ public class ExcelImportService(AppDbContext db)
             int? reps = string.IsNullOrEmpty(repsStr) ? null : int.TryParse(repsStr, out var rp) ? rp : null;
             DateTime? dueDate = string.IsNullOrEmpty(dueDateStr) ? null : DateTime.TryParse(dueDateStr, out var dd) ? dd : null;
 
-            var isDuplicate = existingSet.Contains(new { Language = lang, Number = number });
+            var isDuplicate = false;
+            var assignedNumber = originalNumber ?? 0;
+            var numberChanged = false;
+
+            if (errors.Count == 0)
+            {
+                var key = (lang, NormalizeTerm(term!));
+                if (existingTerms.Contains(key) || seenInFile.Contains(key))
+                {
+                    isDuplicate = true;
+                }
+                else
+                {
+                    seenInFile.Add(key);
+                    assignedNumber = NextNumber(nextNumber, lang);
+                    numberChanged = originalNumber != assignedNumber;
+                }
+            }
 
             rows.Add(new ImportPreviewRow(
-                row, number, langStr ?? "", term ?? "", translation ?? "",
+                row, originalNumber, assignedNumber, langStr ?? "", term ?? "", translation ?? "",
                 partOfSpeech, notes, easiness, interval, reps, dueDate,
-                group, isDuplicate, errors));
+                group, isDuplicate, numberChanged, errors));
         }
 
         var sessionId = Guid.NewGuid().ToString();
@@ -78,6 +111,7 @@ public class ExcelImportService(AppDbContext db)
             rows.Count(r => r.Errors.Count == 0 && !r.IsDuplicate),
             rows.Count(r => r.IsDuplicate),
             rows.Count(r => r.Errors.Count > 0),
+            rows.Count(r => r.NumberChanged),
             sessionId
         );
     }
@@ -89,27 +123,39 @@ public class ExcelImportService(AppDbContext db)
 
         int imported = 0, updated = 0, skipped = 0, errors = 0;
 
+        // Match op (taal, genormaliseerde term) tegen de actuele DB en hernummer per taal.
+        // We herberekenen hier i.p.v. het preview-nummer te hergebruiken, zodat de toegekende
+        // nummers niet botsen met de unieke index (UserId, Language, Number) als de DB intussen wijzigde.
+        var existing = await db.Words.Where(w => w.UserId == userId).ToListAsync();
+        var byTerm = new Dictionary<(Language, string), Word>();
+        var nextNumber = new Dictionary<Language, int>();
+        foreach (var w in existing)
+        {
+            byTerm[(w.Language, NormalizeTerm(w.Term))] = w;
+            nextNumber[w.Language] = Math.Max(nextNumber.GetValueOrDefault(w.Language), w.Number);
+        }
+
         foreach (var row in rows)
         {
             if (row.Errors.Count > 0) { errors++; continue; }
             if (!TryParseLanguage(row.Language, out var lang)) { errors++; continue; }
 
-            var existing = await db.Words.FirstOrDefaultAsync(w =>
-                w.UserId == userId && w.Language == lang && w.Number == row.Number);
+            var key = (lang, NormalizeTerm(row.Term));
 
-            if (existing != null)
+            // Bestaand woord (in DB of eerder in deze import aangemaakt) met dezelfde term+taal.
+            if (byTerm.TryGetValue(key, out var existingWord))
             {
                 if (updateDuplicates)
                 {
-                    existing.Term = row.Term;
-                    existing.Translation = row.Translation;
-                    existing.PartOfSpeech = row.PartOfSpeech;
+                    existingWord.Term = row.Term;
+                    existingWord.Translation = row.Translation;
+                    existingWord.PartOfSpeech = row.PartOfSpeech;
 
                     var progress = await db.UserWordProgress
-                        .FirstOrDefaultAsync(p => p.UserId == userId && p.WordId == existing.Id);
+                        .FirstOrDefaultAsync(p => p.UserId == userId && p.WordId == existingWord.Id);
                     if (progress == null)
                     {
-                        progress = new UserWordProgress { UserId = userId, WordId = existing.Id };
+                        progress = new UserWordProgress { UserId = userId, WordId = existingWord.Id };
                         db.UserWordProgress.Add(progress);
                     }
                     progress.Notes = row.Notes;
@@ -130,13 +176,14 @@ public class ExcelImportService(AppDbContext db)
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Number = row.Number,
+                Number = NextNumber(nextNumber, lang),
                 Language = lang,
                 Term = row.Term,
                 Translation = row.Translation,
                 PartOfSpeech = row.PartOfSpeech
             };
             db.Words.Add(word);
+            byTerm[key] = word;
 
             var wordProgress = new UserWordProgress
             {
@@ -176,6 +223,17 @@ public class ExcelImportService(AppDbContext db)
         _sessions.Remove(sessionId);
 
         return new ImportResultResponse(imported, updated, skipped, errors);
+    }
+
+    // Identiteit van een woord binnen een taal: hoofdletter- en spatie-ongevoelig, accenten blijven onderscheidend.
+    private static string NormalizeTerm(string term) => term.Trim().ToLowerInvariant();
+
+    // Volgende vrije nummer voor een taal (hoogste tot nu toe + 1) en werkt de teller bij.
+    private static int NextNumber(Dictionary<Language, int> counters, Language language)
+    {
+        var next = counters.GetValueOrDefault(language) + 1;
+        counters[language] = next;
+        return next;
     }
 
     private static readonly Dictionary<string, Language> LanguageAliases = new(StringComparer.OrdinalIgnoreCase)

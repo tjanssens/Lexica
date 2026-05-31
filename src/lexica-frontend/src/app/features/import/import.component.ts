@@ -61,6 +61,14 @@ import { LoadingComponent } from '../../shared/components/loading.component';
             <div class="summary-item errors">{{ preview.errorCount }} fouten</div>
           </div>
 
+          @if (preview.renumberedCount > 0) {
+            <div class="renumber-note">
+              <i class="fa-solid fa-circle-info"></i>
+              {{ preview.renumberedCount }} {{ preview.renumberedCount === 1 ? 'woord is' : 'woorden zijn' }}
+              automatisch hernummerd om aan te sluiten op je bestaande woorden.
+            </div>
+          }
+
           <div class="preview-table-wrapper">
             <table class="preview-table">
               <thead>
@@ -75,7 +83,18 @@ import { LoadingComponent } from '../../shared/components/loading.component';
               <tbody>
                 @for (row of preview.rows; track row.rowNumber) {
                   <tr [class.duplicate]="row.isDuplicate" [class.has-error]="row.errors.length > 0">
-                    <td>{{ row.number }}</td>
+                    <td>
+                      @if (!row.isDuplicate && row.errors.length === 0) {
+                        {{ row.number }}
+                        @if (row.numberChanged) {
+                          <span class="renumbered" [title]="'Oorspronkelijk nummer in Excel: ' + (row.originalNumber ?? '-')">
+                            was #{{ row.originalNumber ?? '?' }}
+                          </span>
+                        }
+                      } @else {
+                        {{ row.originalNumber ?? '-' }}
+                      }
+                    </td>
                     <td>{{ row.language }}</td>
                     <td>{{ row.term }}</td>
                     <td>{{ row.translation }}</td>
@@ -221,6 +240,26 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     .valid { background: #d4edda; color: #155724; }
     .duplicate { background: #fff3cd; color: #856404; }
     .errors { background: #f8d7da; color: #721c24; }
+
+    .renumber-note {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #e7f1ff;
+      color: #0f3460;
+      border-radius: 10px;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .renumbered {
+      display: inline-block;
+      margin-left: 0.4rem;
+      color: #888;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
 
     .preview-table-wrapper { overflow-x: auto; margin-bottom: 1rem; }
 

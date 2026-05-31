@@ -8,7 +8,7 @@ public class ExcelExportService(AppDbContext db)
 {
     private static readonly string[] Headers =
     [
-        "number*", "language*", "term*", "translation*",
+        "number", "language*", "term*", "translation*",
         "part_of_speech", "notes", "easiness", "interval",
         "repetitions", "due_date", "group"
     ];
