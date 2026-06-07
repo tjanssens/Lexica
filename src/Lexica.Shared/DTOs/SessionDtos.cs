@@ -3,7 +3,8 @@ namespace Lexica.Shared.DTOs;
 public record SessionRequest(
     List<Guid> SetIds,
     string Direction,
-    int? SessionSize
+    int? SessionSize,
+    bool OnlyNeverCorrect = false
 );
 
 public record SessionWordDto(

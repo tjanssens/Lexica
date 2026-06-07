@@ -21,6 +21,12 @@ import { languageIcon } from '../../shared/utils/language';
         @if (loadingSets) {
           <app-loading message="Sets laden..."></app-loading>
         } @else {
+        @if (showEmptyNotice) {
+          <div class="empty-notice">
+            <i class="fa-solid fa-circle-check"></i>
+            Geen woorden die je nog nooit juist had &mdash; goed bezig!
+          </div>
+        }
         <h2>Kies set(s)</h2>
         <div class="group-select">
           @for (set of sets; track set.id) {
@@ -67,6 +73,15 @@ import { languageIcon } from '../../shared/utils/language';
             <input type="range" min="5" max="50" step="5" [(ngModel)]="sessionSize" />
             <span class="range-value">{{ sessionSize }}</span>
           </div>
+
+          <label class="setting toggle">
+            <span>
+              Alleen woorden die ik nog nooit juist had
+              <small>Nieuwe woorden en woorden die je telkens fout had.</small>
+            </span>
+            <input type="checkbox" [(ngModel)]="onlyNeverCorrect" />
+            <span class="switch"></span>
+          </label>
         </div>
 
         <button class="start-btn"
@@ -161,6 +176,33 @@ import { languageIcon } from '../../shared/utils/language';
     input[type="range"] { width: calc(100% - 3rem); vertical-align: middle; }
     .range-value { font-weight: 600; color: #0f3460; margin-left: 0.5rem; }
 
+    .toggle {
+      display: flex; align-items: center; gap: 0.75rem; cursor: pointer;
+      span:first-child {
+        flex: 1; font-size: 0.85rem; font-weight: 600; color: #333;
+        small { display: block; font-weight: 400; font-size: 0.75rem; color: #888; margin-top: 0.15rem; }
+      }
+      input { display: none; }
+      .switch {
+        position: relative; flex-shrink: 0; width: 44px; height: 24px;
+        background: #ccc; border-radius: 12px; transition: background 0.2s;
+        &::after {
+          content: ''; position: absolute; top: 2px; left: 2px;
+          width: 20px; height: 20px; border-radius: 50%; background: white;
+          transition: transform 0.2s;
+        }
+      }
+      input:checked + .switch { background: #0f3460; }
+      input:checked + .switch::after { transform: translateX(20px); }
+    }
+
+    .empty-notice {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: #eafaf1; border: 1px solid #b7e4c7; color: #1b7a43;
+      border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1.25rem;
+      font-size: 0.9rem; font-weight: 600;
+    }
+
     .start-btn {
       width: 100%;
       padding: 1rem;
@@ -185,6 +227,8 @@ export class SessionStartComponent implements OnInit {
   direction = 'TargetToNl';
   sessionSize = 20;
   mode: 'quick' | 'intensive' = 'intensive';
+  onlyNeverCorrect = false;
+  showEmptyNotice = false;
   loadingSets = true;
   loading = false;
   langIcon = languageIcon;
@@ -201,6 +245,13 @@ export class SessionStartComponent implements OnInit {
       this.direction = prefs.direction ?? this.direction;
       this.sessionSize = prefs.sessionSize ?? this.sessionSize;
       this.mode = prefs.mode ?? this.mode;
+      this.onlyNeverCorrect = prefs.onlyNeverCorrect ?? this.onlyNeverCorrect;
+    }
+    // Toon melding wanneer play terugkeert met een lege "nooit-juist"-selectie
+    this.showEmptyNotice = history.state?.emptyNeverCorrect === true;
+    if (this.showEmptyNotice) {
+      // Wis de state zodat de melding niet terugkeert na een refresh
+      history.replaceState({ ...history.state, emptyNeverCorrect: false }, '');
     }
     this.api.getSets().subscribe(s => {
       this.sets = s;
@@ -220,7 +271,8 @@ export class SessionStartComponent implements OnInit {
     localStorage.setItem('session_prefs', JSON.stringify({
       direction: this.direction,
       sessionSize: this.sessionSize,
-      mode: this.mode
+      mode: this.mode,
+      onlyNeverCorrect: this.onlyNeverCorrect
     }));
 
     // Store session config and navigate to play
@@ -228,7 +280,8 @@ export class SessionStartComponent implements OnInit {
       setIds,
       direction: this.direction,
       sessionSize: this.sessionSize,
-      mode: this.mode
+      mode: this.mode,
+      onlyNeverCorrect: this.onlyNeverCorrect
     }));
 
     this.router.navigate(['/session/play']);

@@ -47,6 +47,24 @@ public class SessionsController(AppDbContext db) : ControllerBase
             })
             .ToListAsync();
 
+        // Optionally keep only words the user has never answered correctly
+        // (no ReviewLog with Known/Easy): covers both new and always-wrong words.
+        if (request.OnlyNeverCorrect)
+        {
+            var everCorrectWordIds = (await db.ReviewLogs
+                .Where(r => r.UserId == UserId
+                    && setWordIds.Contains(r.WordId)
+                    && (r.Result == ReviewResult.Known || r.Result == ReviewResult.Easy))
+                .Select(r => r.WordId)
+                .Distinct()
+                .ToListAsync())
+                .ToHashSet();
+
+            wordsWithProgress = wordsWithProgress
+                .Where(wp => !everCorrectWordIds.Contains(wp.Word.Id))
+                .ToList();
+        }
+
         // Priority selection
         var overdue = wordsWithProgress
             .Where(wp => (wp.Progress?.DueDate ?? today) < today)

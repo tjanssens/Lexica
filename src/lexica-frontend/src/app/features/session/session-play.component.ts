@@ -482,9 +482,16 @@ export class SessionPlayComponent implements OnInit {
     this.http.post<SessionWord[]>(`${this.baseUrl}/next`, {
       setIds: config.setIds,
       direction: config.direction,
-      sessionSize: config.sessionSize
+      sessionSize: config.sessionSize,
+      onlyNeverCorrect: config.onlyNeverCorrect ?? false
     }).subscribe({
       next: (words) => {
+        if (words.length === 0 && config.onlyNeverCorrect === true) {
+          // "Nooit-juist"-filter leverde niets op — terug naar start met melding
+          sessionStorage.removeItem('session_config');
+          this.router.navigate(['/session'], { state: { emptyNeverCorrect: true } });
+          return;
+        }
         this.stack = this.shuffle([...words]);
         this.totalWords = words.length;
         this.showNext();
