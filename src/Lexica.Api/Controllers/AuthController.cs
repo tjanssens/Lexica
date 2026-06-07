@@ -1,18 +1,21 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Lexica.Api.Security;
 using Google.Apis.Auth;
 using Lexica.Core.Entities;
 using Lexica.Core.Services;
 using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Lexica.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting(AuthSecurityOptions.AuthRateLimitPolicy)]
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     IConfiguration configuration,
@@ -61,6 +64,9 @@ public class AuthController(
         {
             return Unauthorized("Ongeldig Google token.");
         }
+
+        if (!AcceptsGooglePayload(payload.Email, payload.EmailVerified))
+            return Unauthorized("Google e-mailadres is niet geverifieerd.");
 
         var user = await userManager.FindByEmailAsync(payload.Email);
         if (user == null)
@@ -144,6 +150,9 @@ public class AuthController(
         $"Je hebt een verzoek gedaan om je wachtwoord voor Lexica opnieuw in te stellen.\n" +
         $"Open deze link om een nieuw wachtwoord te kiezen (1 uur geldig):\n\n{resetUrl}\n\n" +
         $"Heb je dit verzoek niet gedaan? Negeer deze mail dan.\n";
+
+    public static bool AcceptsGooglePayload(string? email, bool emailVerified) =>
+        !string.IsNullOrWhiteSpace(email) && emailVerified;
 
     private Task<AuthResponse> GenerateToken(ApplicationUser user)
     {

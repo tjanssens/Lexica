@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using Lexica.Api.Security;
 using Lexica.Core.Entities;
 using Lexica.Core.Services;
 using Lexica.Infrastructure.Data;
@@ -6,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Lexica.Infrastructure.Services;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,8 +28,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = AuthSecurityOptions.PasswordResetTokenLifespan;
+});
+
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
+var jwtSigningKey = AuthSecurityOptions.GetJwtSigningKey(builder.Configuration, builder.Environment);
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -42,7 +51,7 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey))
         };
     });
 
@@ -64,6 +73,21 @@ builder.Services.AddHostedService<DailyNotificationBackgroundService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthSecurityOptions.AuthRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = AuthSecurityOptions.AuthRateLimitPermitLimit,
+                Window = AuthSecurityOptions.AuthRateLimitWindow,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+});
 
 // CORS - only needed in development (production serves SPA from same origin)
 builder.Services.AddCors(options =>
@@ -93,7 +117,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseRouting();
 app.UseCors("AllowAngular");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

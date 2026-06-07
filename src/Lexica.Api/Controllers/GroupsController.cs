@@ -174,7 +174,12 @@ public class GroupsController(AppDbContext db) : ControllerBase
 
         if (request.WordIds?.Count > 0)
         {
-            wordIds = request.WordIds;
+            wordIds = await db.Words
+                .Where(w => w.UserId == UserId
+                    && w.Language == group.Language
+                    && request.WordIds.Contains(w.Id))
+                .Select(w => w.Id)
+                .ToListAsync();
         }
         else if (request.FromNumber.HasValue && request.ToNumber.HasValue)
         {
@@ -199,6 +204,9 @@ public class GroupsController(AppDbContext db) : ControllerBase
     [HttpDelete("{id:guid}/words")]
     public async Task<IActionResult> RemoveWords(Guid id, [FromBody] List<Guid> wordIds)
     {
+        var ownsGroup = await db.Groups.AnyAsync(g => g.Id == id && g.UserId == UserId);
+        if (!ownsGroup) return NotFound();
+
         var groupWords = await db.GroupWords
             .Where(gw => gw.GroupId == id && wordIds.Contains(gw.WordId))
             .ToListAsync();

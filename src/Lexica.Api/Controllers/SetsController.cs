@@ -198,7 +198,12 @@ public class SetsController(AppDbContext db, SetForkService forkService) : Contr
 
         if (request.WordIds?.Count > 0)
         {
-            wordIds = request.WordIds;
+            wordIds = await db.Words
+                .Where(w => w.UserId == UserId
+                    && w.Language == set.Language
+                    && request.WordIds.Contains(w.Id))
+                .Select(w => w.Id)
+                .ToListAsync();
         }
         else if (request.FromNumber.HasValue && request.ToNumber.HasValue)
         {
@@ -223,6 +228,9 @@ public class SetsController(AppDbContext db, SetForkService forkService) : Contr
     [HttpDelete("{id:guid}/words")]
     public async Task<IActionResult> RemoveWords(Guid id, [FromBody] List<Guid> wordIds)
     {
+        var ownsSet = await db.Sets.AnyAsync(s => s.Id == id && s.UserId == UserId);
+        if (!ownsSet) return NotFound();
+
         var setWords = await db.SetWords
             .Where(sw => sw.SetId == id && wordIds.Contains(sw.WordId))
             .ToListAsync();

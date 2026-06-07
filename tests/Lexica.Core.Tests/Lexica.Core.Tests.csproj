@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Lexica.Api\Lexica.Api.csproj" />
     <ProjectReference Include="..\..\src\Lexica.Core\Lexica.Core.csproj" />
     <ProjectReference Include="..\..\src\Lexica.Infrastructure\Lexica.Infrastructure.csproj" />
   </ItemGroup>
