@@ -64,6 +64,21 @@ public class SessionsControllerTests
         });
     }
 
+    private static void AddProgress(AppDbContext db, Guid userId, Guid wordId,
+        double easiness, int repetitions, int timesReviewed, DateTime dueDate, DateTime? lastReviewed)
+    {
+        db.UserWordProgress.Add(new UserWordProgress
+        {
+            UserId = userId,
+            WordId = wordId,
+            Easiness = easiness,
+            Repetitions = repetitions,
+            TimesReviewed = timesReviewed,
+            DueDate = dueDate,
+            LastReviewed = lastReviewed
+        });
+    }
+
     private static List<Guid> ResultIds(ActionResult<List<SessionWordDto>> result)
     {
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -136,5 +151,144 @@ public class SessionsControllerTests
             new SessionRequest([set.Id], "TargetToNl", 20, OnlyNeverCorrect: true));
 
         Assert.Contains(word.Id, ResultIds(result));
+    }
+
+    [Fact]
+    public async Task GetNextSession_GekendeWoordenMetToekomstigeDueDate_KomenTochTerug()
+    {
+        // Alle woorden vandaag als 'gekend' beantwoord: DueDate staat op morgen, Repetitions > 0.
+        // Een nieuwe sessie later op dezelfde dag mag niet leeg zijn.
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+        var now = DateTime.UtcNow;
+        var wordIds = new List<Guid>();
+        for (var i = 1; i <= 3; i++)
+        {
+            var w = AddWord(db, user.Id, set, i, $"verbum{i}");
+            AddReview(db, user.Id, w.Id, ReviewResult.Known);
+            AddProgress(db, user.Id, w.Id, easiness: 2.6, repetitions: 1, timesReviewed: 1, dueDate: tomorrow, lastReviewed: now);
+            wordIds.Add(w.Id);
+        }
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 20));
+
+        var ids = ResultIds(result);
+        Assert.All(wordIds, id => Assert.Contains(id, ids));
+    }
+
+    [Fact]
+    public async Task GetNextSession_PrioriteertNieuweWoordenBovenGekende()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var nieuw = AddWord(db, user.Id, set, 1, "novum"); // nooit gezien
+        var gekend = AddWord(db, user.Id, set, 2, "scitum");
+        AddReview(db, user.Id, gekend.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, gekend.Id, easiness: 2.5, repetitions: 1, timesReviewed: 1,
+            dueDate: DateTime.UtcNow.Date.AddDays(-1), lastReviewed: DateTime.UtcNow.AddDays(-1));
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 1));
+
+        var ids = ResultIds(result);
+        Assert.Contains(nieuw.Id, ids);
+        Assert.DoesNotContain(gekend.Id, ids);
+    }
+
+    [Fact]
+    public async Task GetNextSession_PrioriteertNooitJuisteWoordenBovenGekende()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var nooitJuist = AddWord(db, user.Id, set, 1, "errans");
+        AddReview(db, user.Id, nooitJuist.Id, ReviewResult.Unknown);
+        AddProgress(db, user.Id, nooitJuist.Id, easiness: 2.3, repetitions: 0, timesReviewed: 1,
+            dueDate: DateTime.UtcNow.Date.AddDays(1), lastReviewed: DateTime.UtcNow);
+
+        var gekend = AddWord(db, user.Id, set, 2, "scitum");
+        AddReview(db, user.Id, gekend.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, gekend.Id, easiness: 2.5, repetitions: 1, timesReviewed: 1,
+            dueDate: DateTime.UtcNow.Date.AddDays(-1), lastReviewed: DateTime.UtcNow.AddDays(-1));
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 1));
+
+        var ids = ResultIds(result);
+        Assert.Contains(nooitJuist.Id, ids);
+        Assert.DoesNotContain(gekend.Id, ids);
+    }
+
+    [Fact]
+    public async Task GetNextSession_SorteertGekendeWoordenMoeilijksteEerst()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+        var now = DateTime.UtcNow;
+        var makkelijk = AddWord(db, user.Id, set, 1, "facile");
+        AddReview(db, user.Id, makkelijk.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, makkelijk.Id, easiness: 2.8, repetitions: 2, timesReviewed: 2, dueDate: tomorrow, lastReviewed: now);
+
+        var moeilijk = AddWord(db, user.Id, set, 2, "difficile");
+        AddReview(db, user.Id, moeilijk.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, moeilijk.Id, easiness: 1.4, repetitions: 2, timesReviewed: 2, dueDate: tomorrow, lastReviewed: now);
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 1));
+
+        var ids = ResultIds(result);
+        Assert.Contains(moeilijk.Id, ids);
+        Assert.DoesNotContain(makkelijk.Id, ids);
+    }
+
+    [Fact]
+    public async Task GetNextSession_SorteertGekendeWoordenMetGelijkeMoeilijkheidOudsteEerst()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+        var recent = AddWord(db, user.Id, set, 1, "recens");
+        AddReview(db, user.Id, recent.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, recent.Id, easiness: 2.0, repetitions: 2, timesReviewed: 2,
+            dueDate: tomorrow, lastReviewed: DateTime.UtcNow);
+
+        var oud = AddWord(db, user.Id, set, 2, "vetus");
+        AddReview(db, user.Id, oud.Id, ReviewResult.Known);
+        AddProgress(db, user.Id, oud.Id, easiness: 2.0, repetitions: 2, timesReviewed: 2,
+            dueDate: tomorrow, lastReviewed: DateTime.UtcNow.AddDays(-10));
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 1));
+
+        var ids = ResultIds(result);
+        Assert.Contains(oud.Id, ids);
+        Assert.DoesNotContain(recent.Id, ids);
     }
 }

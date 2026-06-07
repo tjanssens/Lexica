@@ -21,7 +21,6 @@ public class SessionsController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<List<SessionWordDto>>> GetNextSession(SessionRequest request)
     {
         var sessionSize = request.SessionSize ?? 20;
-        var today = DateTime.UtcNow.Date;
 
         // Only allow sets the user owns or is subscribed to
         var allowedSetIds = await db.Sets
@@ -47,50 +46,53 @@ public class SessionsController(AppDbContext db) : ControllerBase
             })
             .ToListAsync();
 
+        // Words the user has ever answered correctly (a Known/Easy review exists).
+        var everCorrectWordIds = (await db.ReviewLogs
+            .Where(r => r.UserId == UserId
+                && setWordIds.Contains(r.WordId)
+                && (r.Result == ReviewResult.Known || r.Result == ReviewResult.Easy))
+            .Select(r => r.WordId)
+            .Distinct()
+            .ToListAsync())
+            .ToHashSet();
+
         // Optionally keep only words the user has never answered correctly
-        // (no ReviewLog with Known/Easy): covers both new and always-wrong words.
+        // (covers both new and always-wrong words).
         if (request.OnlyNeverCorrect)
         {
-            var everCorrectWordIds = (await db.ReviewLogs
-                .Where(r => r.UserId == UserId
-                    && setWordIds.Contains(r.WordId)
-                    && (r.Result == ReviewResult.Known || r.Result == ReviewResult.Easy))
-                .Select(r => r.WordId)
-                .Distinct()
-                .ToListAsync())
-                .ToHashSet();
-
             wordsWithProgress = wordsWithProgress
                 .Where(wp => !everCorrectWordIds.Contains(wp.Word.Id))
                 .ToList();
         }
 
-        // Priority selection
-        var overdue = wordsWithProgress
-            .Where(wp => (wp.Progress?.DueDate ?? today) < today)
-            .OrderBy(wp => wp.Progress!.DueDate).ToList();
-        var dueToday = wordsWithProgress
-            .Where(wp => (wp.Progress?.DueDate ?? today) == today && (wp.Progress?.Repetitions ?? 0) > 0).ToList();
-        var newWords = wordsWithProgress
-            .Where(wp => (wp.Progress?.Repetitions ?? 0) == 0 && (wp.Progress?.DueDate ?? today) >= today).ToList();
-
-        var selected = new List<dynamic>();
-        selected.AddRange(overdue.Take(sessionSize));
-
-        if (selected.Count < sessionSize)
-            selected.AddRange(dueToday.Take(sessionSize - selected.Count));
-
-        if (selected.Count < sessionSize)
-            selected.AddRange(newWords.Take(sessionSize - selected.Count));
+        // Selection priority (independent of due date, so a set never runs dry
+        // even after every word has been marked known earlier today):
+        //   0. never seen           - no progress or never reviewed
+        //   1. seen but never right  - reviewed, but no Known/Easy in history
+        //   2. the rest              - hardest first (lowest easiness), then oldest review first
+        var selected = wordsWithProgress
+            .OrderBy(wp => SelectionCategory(wp.Progress, wp.Word.Id, everCorrectWordIds))
+            .ThenBy(wp => wp.Progress?.Easiness ?? double.MaxValue)
+            .ThenBy(wp => wp.Progress?.LastReviewed ?? DateTime.MinValue)
+            .Take(sessionSize)
+            .ToList();
 
         var result = selected.Select(wp => new SessionWordDto(
-            ((Word)wp.Word).Id, ((Word)wp.Word).Term, ((Word)wp.Word).Translation,
-            ((Word)wp.Word).PartOfSpeech,
-            ((UserWordProgress?)wp.Progress)?.Notes,
-            ((UserWordProgress?)wp.Progress)?.Repetitions == 0 || wp.Progress == null
+            wp.Word.Id, wp.Word.Term, wp.Word.Translation,
+            wp.Word.PartOfSpeech,
+            wp.Progress?.Notes,
+            wp.Progress == null || wp.Progress.Repetitions == 0
         )).ToList();
 
         return Ok(result);
+    }
+
+    // Lower category = higher selection priority.
+    private static int SelectionCategory(UserWordProgress? progress, Guid wordId, HashSet<Guid> everCorrectWordIds)
+    {
+        if (everCorrectWordIds.Contains(wordId)) return 2; // ever answered correctly
+        if ((progress?.TimesReviewed ?? 0) > 0) return 1;  // seen but never right
+        return 0;                                          // never seen
     }
 
     [HttpPost("review")]
