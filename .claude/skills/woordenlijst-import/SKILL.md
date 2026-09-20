@@ -42,7 +42,7 @@ die de gebruiker zonder aanpassingen kan uploaden op `/import`.
 | `easiness` | nee | SM-2 startwaarde, standaard `2.5`. |
 | `interval` | nee | Standaard `0`. |
 | `repetitions` | nee | Standaard `0`. |
-| `due_date` | nee | `yyyy-MM-dd`, standaard vandaag. |
+| `due_date` | nee | `yyyy-MM-dd`. **Laat leeg** voor nieuwe woorden — de server zet dan zelf vandaag (UTC). Enkel invullen bij het terugzetten van bestaande leerprogressie. |
 | `group` | nee | Groepsnaam; bestaat de groep nog niet voor die taal, dan maakt de import ze aan. |
 
 ## Goed om te weten over de import
@@ -54,6 +54,9 @@ die de gebruiker zonder aanpassingen kan uploaden op `/import`.
 - **Rijen zonder `term` én zonder `translation` worden overgeslagen**, lege
   regels zijn dus onschuldig.
 - Eén groep per rij: de import koppelt het woord aan maximaal één groep.
+- `due_date` leeg laten voor nieuwe woorden. De databank (Postgres) bewaart
+  tijdstippen in UTC; een datum uit Excel komt zonder tijdzone binnen. De server
+  normaliseert die sinds de fix naar UTC, maar een leeg veld is hoe dan ook juist.
 
 ## Script
 

@@ -82,7 +82,7 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             double? easiness = string.IsNullOrEmpty(easinessStr) ? null : double.TryParse(easinessStr, out var ef) ? ef : null;
             int? interval = string.IsNullOrEmpty(intervalStr) ? null : int.TryParse(intervalStr, out var iv) ? iv : null;
             int? reps = string.IsNullOrEmpty(repsStr) ? null : int.TryParse(repsStr, out var rp) ? rp : null;
-            DateTime? dueDate = string.IsNullOrEmpty(dueDateStr) ? null : DateTime.TryParse(dueDateStr, out var dd) ? dd : null;
+            DateTime? dueDate = ParseDueDate(dueDateStr);
 
             var isDuplicate = false;
             var assignedNumber = originalNumber ?? 0;
@@ -229,6 +229,18 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
         cache.Remove(SessionKey(sessionId));
 
         return new ImportResultResponse(imported, updated, skipped, errors);
+    }
+
+    // Excel levert een datum zonder tijdzone-informatie. Npgsql aanvaardt voor
+    // 'timestamp with time zone' enkel DateTimeKind.Utc, dus normaliseren we hier naar
+    // een UTC-datum; anders faalt SaveChanges pas bij het bevestigen van de import.
+    private static DateTime? ParseDueDate(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return null;
+        if (!DateTime.TryParse(value, out var parsed)) return null;
+
+        var utc = parsed.Kind == DateTimeKind.Local ? parsed.ToUniversalTime() : parsed;
+        return DateTime.SpecifyKind(utc.Date, DateTimeKind.Utc);
     }
 
     // Identiteit van een woord binnen een taal: hoofdletter- en spatie-ongevoelig, accenten blijven onderscheidend.

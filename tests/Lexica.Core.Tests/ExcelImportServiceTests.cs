@@ -47,6 +47,26 @@ public class ExcelImportServiceTests
         return stream;
     }
 
+    // Bouwt een bestand met een due_date-kolom, zoals een export of een zelfgemaakte woordenlijst.
+    private static Stream BuildExcelMetDueDate(string language, string term, string translation, string dueDate)
+    {
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("Woorden");
+        ws.Cell(1, 1).Value = "language";
+        ws.Cell(1, 2).Value = "term";
+        ws.Cell(1, 3).Value = "translation";
+        ws.Cell(1, 4).Value = "due_date";
+        ws.Cell(2, 1).Value = language;
+        ws.Cell(2, 2).Value = term;
+        ws.Cell(2, 3).Value = translation;
+        ws.Cell(2, 4).Value = dueDate;
+
+        var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+        return stream;
+    }
+
     private static async Task<ApplicationUser> SeedUserAsync(AppDbContext db, params (int number, Language lang, string term)[] words)
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user", DisplayName = "User" };
@@ -232,5 +252,42 @@ public class ExcelImportServiceTests
 
         var word = await db.Words.SingleAsync(w => w.UserId == user.Id && w.Term == "savoir");
         Assert.Equal("x", word.Translation); // ongewijzigd
+    }
+
+    // Postgres ('timestamp with time zone') aanvaardt enkel Kind=Utc; een datum uit Excel komt
+    // zonder tijdzone binnen en deed SaveChanges eerder falen bij het bevestigen van de import.
+    [Fact]
+    public async Task Preview_DueDateUitExcel_WordtAlsUtcGelezen()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db);
+        var service = NewService(db);
+
+        using var excel = BuildExcelMetDueDate("Frans", "avoir", "hebben", "2026-09-20");
+
+        var result = await service.Preview(excel, user.Id);
+
+        Assert.Single(result.Rows);
+        var due = result.Rows[0].DueDate;
+        Assert.NotNull(due);
+        Assert.Equal(DateTimeKind.Utc, due!.Value.Kind);
+        Assert.Equal(new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc), due.Value);
+    }
+
+    [Fact]
+    public async Task Confirm_BewaartDueDateAlsUtc()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db);
+        var service = NewService(db);
+
+        using var excel = BuildExcelMetDueDate("Frans", "avoir", "hebben", "2026-09-20");
+
+        var preview = await service.Preview(excel, user.Id);
+        var result = await service.Confirm(preview.SessionId, user.Id, updateDuplicates: false);
+
+        Assert.Equal(1, result.Imported);
+        var progress = await db.UserWordProgress.SingleAsync(p => p.UserId == user.Id);
+        Assert.Equal(DateTimeKind.Utc, progress.DueDate.Kind);
     }
 }

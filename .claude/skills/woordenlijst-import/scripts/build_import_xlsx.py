@@ -7,8 +7,6 @@ Het JSON-formaat staat beschreven in ../SKILL.md.
 """
 import json
 import sys
-from datetime import date
-
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -46,7 +44,6 @@ def build(data, out_path):
         cell.fill = fill
         cell.font = font
 
-    today = date.today().isoformat()
     seen = {}
     for index, word in enumerate(words, start=1):
         term = (word.get("term") or "").strip()
@@ -81,7 +78,10 @@ def build(data, out_path):
         ws.cell(row, 7, word.get("easiness", 2.5))
         ws.cell(row, 8, word.get("interval", 0))
         ws.cell(row, 9, word.get("repetitions", 0))
-        ws.cell(row, 10, word.get("dueDate", today))
+        # due_date bewust leeg laten tenzij expliciet gevraagd: de import vult dan zelf
+        # vandaag in (in UTC). Een datum uit Excel komt zonder tijdzone binnen en werd
+        # door oudere serverversies geweigerd door Postgres.
+        ws.cell(row, 10, word.get("dueDate", "") or "")
         ws.cell(row, 11, word.get("group", default_group) or "")
 
     for col, width in enumerate(WIDTHS, start=1):
