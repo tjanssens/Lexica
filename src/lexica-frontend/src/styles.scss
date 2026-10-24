@@ -12,3 +12,11 @@ body {
   background: #f5f5f5;
   color: #333;
 }
+
+// iOS home-screen apps draw behind the translucent status bar.
+// Reserve its safe area once for every routed screen.
+app-root {
+  display: block;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: #0f3460;
+}
