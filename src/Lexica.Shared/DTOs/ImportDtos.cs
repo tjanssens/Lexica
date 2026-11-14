@@ -42,3 +42,11 @@ public record ImportResultResponse(
     int Errors,
     int AddedToSet = 0
 );
+
+// Een (term, vertaling)-paar dat niet uit Excel komt, bv. herkend op een foto en nagekeken door de gebruiker.
+public record ImportRowInput(string? Term, string? Translation);
+
+public record ImportRowsPreviewRequest(List<ImportRowInput> Rows);
+
+// De (term, vertaling)-paren die Claude op een foto herkende, nog niet geïmporteerd.
+public record PhotoImportResponse(List<ImportRowInput> Rows);

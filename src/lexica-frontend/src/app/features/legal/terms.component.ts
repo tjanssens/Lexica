@@ -55,6 +55,14 @@ import { RouterLink } from '@angular/router';
             andere gebruikers kunt kopiëren.
           </p>
           <p>
+            Je kunt woordjes ook importeren door een foto van een woordenlijst te nemen. De
+            woordjes worden dan uitgelezen door een AI-model (Claude van Anthropic). Dat gaat niet
+            altijd foutloos: je krijgt het resultaat eerst te zien en bent zelf verantwoordelijk om
+            het na te kijken voor je het importeert. Lexica claimt geen rechten op de foto's of
+            woordjes die je zo importeert; voor die inhoud geldt artikel 6. Om de dienst gratis te
+            houden, kan het aantal foto's per dag beperkt zijn.
+          </p>
+          <p>
             <strong>Lexica is en blijft volledig gratis</strong> voor het beschreven gebruik. Er
             zijn geen advertenties, geen verkoop van gegevens, en geen abonnementen.
           </p>
@@ -250,9 +258,12 @@ import { RouterLink } from '@angular/router';
         </section>
 
         <p class="version">
-          <strong>Laatste update:</strong> 30 mei 2026<br />
-          <strong>Versie:</strong> 1.2<br />
+          <strong>Laatste update:</strong> 14 november 2026<br />
+          <strong>Versie:</strong> 1.3<br />
           <span class="version-note">
+            Wijzigingen t.o.v. versie 1.2: optionele foto-import van woordenlijsten met AI-tekstherkenning
+            toegevoegd (artikel 3).
+            <br />
             Wijzigingen t.o.v. versie 1.1: optionele push-notificaties toegevoegd (studieherinneringen).
             Deze functie is gratis, vereist je toestemming en kan op elk moment in je profiel worden uitgezet.
             <br />

@@ -7,6 +7,7 @@ using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Lexica.Api.Controllers;
 
@@ -244,6 +245,76 @@ public class SetsController(AppDbContext db, SetForkService forkService, ExcelIm
             return Ok(await importService.Preview(stream, UserId, id));
         }
         catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // Zelfde preview als hierboven, maar voor (term, vertaling)-paren die de app zelf aanlevert:
+    // de woorden die de tekstherkenning op een foto vond, nagekeken door de gebruiker.
+    // De foto zelf komt nooit op de server.
+    [HttpPost("{id:guid}/import/preview-rows")]
+    public async Task<ActionResult<ImportPreviewResponse>> ImportPreviewRows(Guid id, ImportRowsPreviewRequest request)
+    {
+        if (request?.Rows == null || request.Rows.Count == 0)
+            return BadRequest("Geen woorden om te importeren.");
+        if (request.Rows.Count > MaxImportRows)
+            return BadRequest($"Maximaal {MaxImportRows} woorden per keer.");
+
+        try
+        {
+            return Ok(await importService.PreviewRows(request.Rows, UserId, id));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    private const int MaxImportRows = 500;
+
+    // Elke foto kost een (betaalde) Claude-aanroep: per gebruiker beperken we het aantal per dag.
+    private const int MaxPhotosPerUserPerDay = 30;
+
+    // Leest de woordjes op een foto (bv. een pagina uit een schoolboek) uit met Claude. Er wordt
+    // nog niets geïmporteerd: de app toont de herkende rijen eerst ter controle en stuurt de
+    // nagekeken lijst daarna naar import/preview-rows. De foto wordt niet bewaard.
+    [HttpPost("{id:guid}/import/photo")]
+    [RequestSizeLimit(PhotoWordExtractionService.MaxImageBytes + 64 * 1024)]
+    public async Task<ActionResult<PhotoImportResponse>> ImportPhoto(
+        Guid id, IFormFile file,
+        [FromServices] PhotoWordExtractionService photoService,
+        [FromServices] IMemoryCache cache,
+        CancellationToken ct)
+    {
+        var set = await db.Sets.FirstOrDefaultAsync(s => s.Id == id && s.UserId == UserId, ct);
+        if (set == null) return NotFound();
+
+        if (!photoService.IsConfigured)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, "Foto-import is nog niet ingesteld op de server.");
+        if (file == null || file.Length == 0)
+            return BadRequest("Geen foto geüpload.");
+        if (file.Length > PhotoWordExtractionService.MaxImageBytes)
+            return BadRequest("De foto is te groot (maximaal 5 MB).");
+        var mediaType = file.ContentType?.ToLowerInvariant() ?? "";
+        if (!PhotoWordExtractionService.SupportedMediaTypes.Contains(mediaType))
+            return BadRequest("Alleen JPG-, PNG-, WebP- of GIF-foto's zijn toegestaan.");
+
+        var quotaKey = $"photo-import:{UserId}:{DateTime.UtcNow:yyyy-MM-dd}";
+        var used = cache.GetOrCreate(quotaKey, e => { e.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1); return new int[1]; })!;
+        if (Interlocked.Increment(ref used[0]) > MaxPhotosPerUserPerDay)
+            return StatusCode(StatusCodes.Status429TooManyRequests, $"Je kunt maximaal {MaxPhotosPerUserPerDay} foto's per dag importeren.");
+
+        byte[] bytes;
+        using (var ms = new MemoryStream())
+        {
+            await file.CopyToAsync(ms, ct);
+            bytes = ms.ToArray();
+        }
+
+        try
+        {
+            var rows = await photoService.ExtractWords(bytes, mediaType, set.Language, ct);
+            return Ok(new PhotoImportResponse(rows));
+        }
+        catch (PhotoImportFailedException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, ex.Message);
+        }
     }
 
     [HttpPost("{id:guid}/import/confirm")]

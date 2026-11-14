@@ -327,4 +327,52 @@ public class ExcelImportServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.Confirm(preview.SessionId, user.Id, updateDuplicates: false));
     }
+
+    [Fact]
+    public async Task PreviewRows_FotoWoordenGebruikenTaalVanSetEnWordenGeimporteerd()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db,
+            (1, Language.Latin, "servus"),
+            (2, Language.Latin, "puella"));
+        var set = await SeedSetAsync(db, user.Id, Language.Latin, "puella");
+        var service = NewService(db);
+
+        var preview = await service.PreviewRows(new[]
+        {
+            new Lexica.Shared.DTOs.ImportRowInput("  amo, amare ", " beminnen "), // nieuw, wordt getrimd
+            new Lexica.Shared.DTOs.ImportRowInput("servus", "slaaf"),             // bestaat al, nog niet in set
+            new Lexica.Shared.DTOs.ImportRowInput("puella", "meisje"),            // zit al in set
+            new Lexica.Shared.DTOs.ImportRowInput("bellum", ""),                  // vertaling ontbreekt
+        }, user.Id, set.Id);
+
+        Assert.Equal(1, preview.ValidCount);
+        Assert.Equal(2, preview.DuplicateCount);
+        Assert.Equal(1, preview.ErrorCount);
+        Assert.Equal(2, preview.ToAddToSetCount);
+        Assert.All(preview.Rows, r => Assert.Equal("Latin", r.Language));
+        Assert.Equal("amo, amare", preview.Rows[0].Term);
+        Assert.Equal("beminnen", preview.Rows[0].Translation);
+
+        var result = await service.Confirm(preview.SessionId, user.Id, updateDuplicates: false, set.Id);
+        Assert.Equal(1, result.Imported);
+        Assert.Equal(2, result.AddedToSet);
+        Assert.Equal(1, result.Errors);
+
+        var termsInSet = await db.SetWords.Where(sw => sw.SetId == set.Id).Select(sw => sw.Word.Term).ToListAsync();
+        Assert.Equal(new[] { "amo, amare", "puella", "servus" }, termsInSet.OrderBy(t => t, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task PreviewRows_SetVanAndereGebruikerWordtGeweigerd()
+    {
+        using var db = NewDb();
+        var owner = await SeedUserAsync(db);
+        var other = await SeedUserAsync(db);
+        var set = await SeedSetAsync(db, owner.Id, Language.Latin);
+        var service = NewService(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.PreviewRows(
+            new[] { new Lexica.Shared.DTOs.ImportRowInput("et", "en") }, other.Id, set.Id));
+    }
 }
