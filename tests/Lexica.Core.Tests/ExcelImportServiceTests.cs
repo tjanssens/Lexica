@@ -375,4 +375,29 @@ public class ExcelImportServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.PreviewRows(
             new[] { new Lexica.Shared.DTOs.ImportRowInput("et", "en") }, other.Id, set.Id));
     }
+
+    [Fact]
+    public async Task PreviewRows_ZonderSetGebruiktGekozenTaal()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db, (1, Language.Greek, "λόγος"));
+        var service = NewService(db);
+
+        var preview = await service.PreviewRows(new[]
+        {
+            new Lexica.Shared.DTOs.ImportRowInput("λόγος", "woord"),   // bestaat al
+            new Lexica.Shared.DTOs.ImportRowInput("ἄνθρωπος", "mens"), // nieuw
+        }, user.Id, null, Language.Greek);
+
+        Assert.Equal(1, preview.ValidCount);
+        Assert.Equal(1, preview.DuplicateCount);
+        Assert.All(preview.Rows, r => Assert.Equal("Greek", r.Language));
+
+        var result = await service.Confirm(preview.SessionId, user.Id, updateDuplicates: false);
+        Assert.Equal(1, result.Imported);
+        Assert.Equal(0, result.AddedToSet);
+        var word = await db.Words.SingleAsync(w => w.Term == "ἄνθρωπος");
+        Assert.Equal(Language.Greek, word.Language);
+        Assert.Equal(2, word.Number);
+    }
 }

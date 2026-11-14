@@ -67,12 +67,13 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
     }
 
     // Preview voor een lijst (term, vertaling)-paren zonder Excel, bv. herkend op een foto.
-    // Taal is leeg en valt dus terug op de taal van de set.
-    public Task<ImportPreviewResponse> PreviewRows(IEnumerable<ImportRowInput> input, Guid userId, Guid targetSetId)
+    // In een set valt de taal terug op die van de set; zonder set geeft de gebruiker de taal mee.
+    public Task<ImportPreviewResponse> PreviewRows(IEnumerable<ImportRowInput> input, Guid userId, Guid? targetSetId, Language? language = null)
     {
+        var languageStr = targetSetId.HasValue ? null : language?.ToString();
         var rawRows = input
             .Select((r, i) => new RawRow(
-                i + 1, null, null, Clean(r.Term), Clean(r.Translation),
+                i + 1, null, languageStr, Clean(r.Term), Clean(r.Translation),
                 null, null, null, null, null, null, null))
             .ToList();
         return BuildPreview(rawRows, userId, targetSetId);

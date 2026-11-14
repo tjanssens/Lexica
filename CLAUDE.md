@@ -97,7 +97,7 @@ Lexica.Shared         → DTOs (gedeeld tussen lagen)
 - `SessionsController` — Studiesessies met SM-2 spaced repetition
 - `StatsController` — Statistieken, weekoverzicht, achievements
 - `ImportController` — Excel import met preview en bevestiging
-- `SetsController` — CRUD voor sets, public set discovery, subscriptions, **fork/split/merge/move-words** (delegeert naar `SetForkService`) en **import van een woordenlijst in een set** (`POST {id}/import/preview|confirm`, hergebruikt `ExcelImportService`), ook **vanaf een foto** (`POST {id}/import/photo` leest de woordjes uit met Claude via `PhotoWordExtractionService`, daarna `POST {id}/import/preview-rows` met de nagekeken rijen)
+- `SetsController` — CRUD voor sets, public set discovery, subscriptions, **fork/split/merge/move-words** (delegeert naar `SetForkService`) en **import van een woordenlijst in een set** (`POST {id}/import/preview|confirm`, hergebruikt `ExcelImportService`), ook **vanaf een foto** (`POST {id}/import/photo` leest de woordjes uit met Claude via `PhotoWordExtractionService`, daarna `POST {id}/import/preview-rows` met de nagekeken rijen). Zonder set: `POST api/words/import/photo?language=…` + `api/words/import/preview-rows` in `ImportController` (knoppen in de woordenlijst en op `/import`)
 
 **Domeinmodel** (`src/Lexica.Core/Entities/`):
 - `ApplicationUser` (extends IdentityUser\<Guid>) — XP, Level, Streak, SessionSize
@@ -142,7 +142,8 @@ src/lexica-frontend/src/app/
 
 - Config-sectie `Anthropic`: `ApiKey` (**nooit committen**; productie: `ANTHROPIC_API_KEY=...` in `C:\apps\lexica\.env`, docker-compose.yml geeft hem door als `Anthropic__ApiKey`, lokaal: `dotnet user-secrets set "Anthropic:ApiKey" ...`), `Model` (standaard `claude-opus-5-5`).
 - Zonder sleutel geeft `POST api/sets/{id}/import/photo` een 503 met een duidelijke melding; de rest van de app werkt gewoon.
-- Limiet: 30 foto's per gebruiker per dag (in-memory, `SetsController.MaxPhotosPerUserPerDay`).
+- Claude markeert per rij `uncertain` + korte `reason`; het nakijkscherm toont standaard alleen die twijfelgevallen (rest staat klaar, "Toon alles" toont alles).
+- Limiet: 30 foto's per gebruiker per dag (in-memory, `PhotoImportHandler.MaxPhotosPerUserPerDay`).
 - Anthropic staat als verwerker in de privacyverklaring (v1.5) en de foto-import in artikel 3 van de gebruiksvoorwaarden (v1.3).
 
 ## Geparkeerde features

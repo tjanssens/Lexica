@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Lexica.Core.Enums;
 using Lexica.Infrastructure.Services;
 using Lexica.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Lexica.Api.Controllers;
 
@@ -26,6 +28,31 @@ public class ImportController(ExcelImportService importService, ExcelExportServi
         using var stream = file.OpenReadStream();
         var result = await importService.Preview(stream, UserId);
         return Ok(result);
+    }
+
+    // Foto van een woordenlijst -> (term, vertaling)-paren via Claude, voor de algemene woordenlijst
+    // (zonder set). De taal kiest de gebruiker. Er wordt nog niets geïmporteerd.
+    [HttpPost("photo")]
+    [RequestSizeLimit(PhotoImportHandler.MaxRequestBytes)]
+    public Task<ActionResult<PhotoImportResponse>> ImportPhoto(
+        IFormFile file, [FromQuery] Language language,
+        [FromServices] PhotoWordExtractionService photoService,
+        [FromServices] IMemoryCache cache,
+        CancellationToken ct)
+        => PhotoImportHandler.Handle(this, file, language, UserId, photoService, cache, ct);
+
+    // Preview voor nagekeken (term, vertaling)-paren, bv. van een foto, in de gekozen taal.
+    [HttpPost("preview-rows")]
+    public async Task<ActionResult<ImportPreviewResponse>> PreviewRows(ImportRowsPreviewRequest request)
+    {
+        if (request?.Rows == null || request.Rows.Count == 0)
+            return BadRequest("Geen woorden om te importeren.");
+        if (request.Rows.Count > 500)
+            return BadRequest("Maximaal 500 woorden per keer.");
+        if (!Enum.TryParse<Language>(request.Language, true, out var language))
+            return BadRequest("Kies een taal.");
+
+        return Ok(await importService.PreviewRows(request.Rows, UserId, null, language));
     }
 
     [HttpPost("confirm")]
