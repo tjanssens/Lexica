@@ -49,7 +49,7 @@ public class PhotoWordExtractionService(IOptions<AnthropicOptions> options, ILog
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(options.Value.ApiKey);
 
-    public async Task<List<ImportRowInput>> ExtractWords(byte[] image, string mediaType, Language language, CancellationToken ct = default)
+    public async Task<List<PhotoWordRow>> ExtractWords(byte[] image, string mediaType, Language language, CancellationToken ct = default)
     {
         if (!IsConfigured) throw new PhotoImportNotConfiguredException();
 
@@ -116,7 +116,11 @@ public class PhotoWordExtractionService(IOptions<AnthropicOptions> options, ILog
         {
             var result = JsonSerializer.Deserialize<ExtractionResult>(json, JsonOptions);
             return (result?.Words ?? [])
-                .Select(w => new ImportRowInput(w.Term?.Trim(), w.Translation?.Trim()))
+                .Select(w => new PhotoWordRow(
+                    w.Term?.Trim(), w.Translation?.Trim(),
+                    // Een rij zonder term of vertaling moet sowieso nagekeken worden.
+                    w.Uncertain || string.IsNullOrWhiteSpace(w.Term) || string.IsNullOrWhiteSpace(w.Translation),
+                    string.IsNullOrWhiteSpace(w.Reason) ? null : w.Reason.Trim()))
                 .Where(w => !string.IsNullOrEmpty(w.Term) || !string.IsNullOrEmpty(w.Translation))
                 .ToList();
         }
@@ -144,6 +148,18 @@ public class PhotoWordExtractionService(IOptions<AnthropicOptions> options, ILog
         If an entry has no visible translation, return it with an empty translation.
         Do not invent or correct words; copy what is on the page. Return an empty list if the
         photo contains no word list.
+
+        The student will only double-check the entries you flag, so flag honestly:
+        - uncertain: true when you are not sure the entry matches the page exactly. For example:
+          letters, accents or breathings that are blurry, cut off, covered or ambiguous in
+          handwriting; a translation you could only partly read; an entry where it is unclear
+          which words belong to the term and which to the translation, or which translation
+          belongs to which term; a line that may be a header or example rather than an entry.
+        - uncertain: false when the entry is clearly legible and its pairing is obvious. Do not
+          flag entries just to be cautious; a clean printed page should have few or no flags.
+        - reason: when uncertain, a short Dutch explanation for the student (max. 8 words,
+          e.g. "laatste letter onleesbaar", "vertaling deels afgesneden",
+          "onduidelijk welke vertaling hierbij hoort"). Empty string when not uncertain.
         """;
 
     private static readonly Dictionary<string, JsonElement> ResultSchema = new()
@@ -161,8 +177,10 @@ public class PhotoWordExtractionService(IOptions<AnthropicOptions> options, ILog
                     {
                         term = new { type = "string" },
                         translation = new { type = "string" },
+                        uncertain = new { type = "boolean" },
+                        reason = new { type = "string" },
                     },
-                    required = new[] { "term", "translation" },
+                    required = new[] { "term", "translation", "uncertain", "reason" },
                     additionalProperties = false,
                 },
             },
@@ -174,5 +192,5 @@ public class PhotoWordExtractionService(IOptions<AnthropicOptions> options, ILog
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private sealed record ExtractionResult(List<ExtractedWord>? Words);
-    private sealed record ExtractedWord(string? Term, string? Translation);
+    private sealed record ExtractedWord(string? Term, string? Translation, bool Uncertain, string? Reason);
 }

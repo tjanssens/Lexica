@@ -50,4 +50,8 @@ public record ImportRowInput(string? Term, string? Translation);
 public record ImportRowsPreviewRequest(List<ImportRowInput> Rows, string? Language = null);
 
 // De (term, vertaling)-paren die Claude op een foto herkende, nog niet geïmporteerd.
-public record PhotoImportResponse(List<ImportRowInput> Rows);
+public record PhotoImportResponse(List<PhotoWordRow> Rows);
+
+// Een woordje zoals Claude het op de foto las. Uncertain = Claude twijfelt (slecht leesbaar,
+// afgesneden, onduidelijke kolom, ...); Reason legt in het Nederlands kort uit waarom.
+public record PhotoWordRow(string? Term, string? Translation, bool Uncertain = false, string? Reason = null);

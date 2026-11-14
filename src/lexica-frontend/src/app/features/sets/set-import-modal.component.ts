@@ -14,6 +14,9 @@ interface ReviewRow {
   term: string;
   translation: string;
   selected: boolean;
+  /** Claude twijfelde, of de rij werd met de hand toegevoegd: altijd tonen ter controle. */
+  needsReview: boolean;
+  reason?: string;
 }
 @Component({
   selector: 'app-set-import-modal',
@@ -66,33 +69,56 @@ interface ReviewRow {
             <app-loading [message]="loadingMessage"></app-loading>
           }
           @if (importStep === 'review') {
-            <p class="import-explain">
-              Kijk de herkende woordjes na. Pas aan wat fout gelezen is en vink uit wat je niet wilt importeren.
-            </p>
+            @if (reviewRows.length > 0) {
+              @if (needsReviewCount > 0) {
+                <div class="review-banner warn">
+                  <i class="fa-solid fa-circle-question"></i>
+                  <span>
+                    Claude twijfelt bij <strong>{{ needsReviewCount }}</strong> van de {{ reviewRows.length }} woordjes.
+                    Kijk {{ needsReviewCount === 1 ? 'dat' : 'die' }} na; de rest staat klaar.
+                  </span>
+                </div>
+              } @else {
+                <div class="review-banner ok">
+                  <i class="fa-solid fa-circle-check"></i>
+                  <span>Claude las alle <strong>{{ reviewRows.length }}</strong> woordjes zonder twijfel. Je kunt meteen verder.</span>
+                </div>
+              }
+            }
             <div class="review-tools">
               <label class="checkbox-label">
                 <input type="checkbox" [checked]="allSelected" (change)="toggleAll($any($event.target).checked)" />
                 {{ selectedCount }} van {{ reviewRows.length }}
               </label>
+              @if (needsReviewCount < reviewRows.length) {
+                <button type="button" class="link-btn" (click)="showAllRows = !showAllRows">
+                  {{ showAllRows ? 'Alleen twijfels' : 'Toon alles' }}
+                </button>
+              }
               <button type="button" class="link-btn" (click)="swapColumns()" title="Term en vertaling omwisselen">
                 <i class="fa-solid fa-right-left"></i> Omwisselen
               </button>
             </div>
+            @if (showAllRows || needsReviewCount > 0) {
             <div class="import-rows">
               @for (row of reviewRows; track $index) {
-                <div class="review-row" [class.deselected]="!row.selected">
+                @if (showAllRows || row.needsReview) {
+                <div class="review-row" [class.deselected]="!row.selected" [class.doubt]="row.needsReview">
                   <input type="checkbox" [(ngModel)]="row.selected" [name]="'sel' + $index" />
                   <div class="review-fields">
                     <input type="text" [(ngModel)]="row.term" [name]="'term' + $index" placeholder="{{ targetLabel }}" (input)="autoSelect(row)" />
                     <input type="text" [(ngModel)]="row.translation" [name]="'tr' + $index" placeholder="Nederlands" (input)="autoSelect(row)" />
+                    @if (row.reason) { <span class="doubt-reason"><i class="fa-solid fa-circle-question"></i> {{ row.reason }}</span> }
                   </div>
                   <button type="button" class="row-remove" (click)="removeRow($index)" title="Rij verwijderen"><i class="fa-solid fa-trash"></i></button>
                 </div>
-              }
-              @if (reviewRows.length === 0) {
-                <p class="empty">Er werden geen woordjes gevonden op deze foto.</p>
+                }
               }
             </div>
+            }
+            @if (reviewRows.length === 0) {
+              <p class="empty">Er werden geen woordjes gevonden op deze foto.</p>
+            }
             <div class="review-tools">
               <button type="button" class="link-btn" (click)="addRow()"><i class="fa-solid fa-plus"></i> Rij toevoegen</button>
               <button type="button" class="link-btn" (click)="photoInput2.click()"><i class="fa-solid fa-camera"></i> Nog een foto</button>
@@ -270,6 +296,15 @@ interface ReviewRow {
     .link-btn {
       background: none; border: none; color: #0f3460; font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0.25rem 0;
     }
+    .review-banner {
+      display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.6rem 0.75rem; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 0.75rem;
+      &.warn { background: #fff3cd; color: #6b5000; }
+      &.ok { background: #d4edda; color: #155724; }
+      i { margin-top: 0.15rem; }
+    }
+    .review-row.doubt { border-left: 3px solid #f0ad00; }
+    .doubt-reason { font-size: 0.75rem; color: #8a6100; }
     .review-row {
       display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; border-bottom: 1px solid #f2f2f2;
       &:last-child { border-bottom: none; }
@@ -318,6 +353,12 @@ export class SetImportModalComponent {
   source: 'excel' | 'photo' = 'excel';
   loadingMessage = 'Bestand verwerken...';
   reviewRows: ReviewRow[] = [];
+  /** Standaard tonen we enkel de woordjes waar Claude aan twijfelt. */
+  showAllRows = false;
+
+  get needsReviewCount(): number {
+    return this.reviewRows.filter(r => r.needsReview).length;
+  }
   importPreview: ImportPreviewResponse | null = null;
   importResult: ImportResultResponse | null = null;
   importUpdateDuplicates = false;
@@ -392,8 +433,11 @@ export class SetImportModalComponent {
           term: r.term ?? '',
           translation: r.translation ?? '',
           selected: !!r.term?.trim() && !!r.translation?.trim(),
+          needsReview: !!r.uncertain,
+          reason: r.reason ?? undefined,
         }));
         this.reviewRows = append ? [...this.reviewRows, ...rows] : rows;
+        this.showAllRows = false;
         this.source = 'photo';
         this.importStep = 'review';
       },
@@ -418,7 +462,7 @@ export class SetImportModalComponent {
   }
 
   addRow() {
-    this.reviewRows = [...this.reviewRows, { term: '', translation: '', selected: false }];
+    this.reviewRows = [...this.reviewRows, { term: '', translation: '', selected: false, needsReview: true }];
   }
 
   removeRow(index: number) {

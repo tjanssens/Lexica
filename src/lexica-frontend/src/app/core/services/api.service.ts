@@ -426,8 +426,17 @@ export interface ImportRowInput {
   translation: string;
 }
 
+export interface PhotoWordRow {
+  term: string | null;
+  translation: string | null;
+  /** Claude twijfelt aan deze rij. */
+  uncertain: boolean;
+  /** Korte uitleg waarom (Nederlands). */
+  reason: string | null;
+}
+
 export interface PhotoImportResponse {
-  rows: ImportRowInput[];
+  rows: PhotoWordRow[];
 }
 
 export interface ImportResultResponse {
