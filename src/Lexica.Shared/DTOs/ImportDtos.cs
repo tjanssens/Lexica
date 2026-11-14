@@ -46,7 +46,8 @@ public record ImportResultResponse(
 // Een (term, vertaling)-paar dat niet uit Excel komt, bv. herkend op een foto en nagekeken door de gebruiker.
 public record ImportRowInput(string? Term, string? Translation);
 
-public record ImportRowsPreviewRequest(List<ImportRowInput> Rows);
+// Language is enkel nodig bij de algemene import (zonder set); in een set geldt de taal van de set.
+public record ImportRowsPreviewRequest(List<ImportRowInput> Rows, string? Language = null);
 
 // De (term, vertaling)-paren die Claude op een foto herkende, nog niet geïmporteerd.
 public record PhotoImportResponse(List<ImportRowInput> Rows);

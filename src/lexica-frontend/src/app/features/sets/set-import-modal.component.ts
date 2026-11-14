@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, ImportPreviewResponse, ImportResultResponse } from '../../core/services/api.service';
 import { prepareImportPhoto } from './photo-resize';
+import { LANGUAGES, languageLabel } from '../../shared/utils/language';
 import { LoadingComponent } from '../../shared/components/loading.component';
 
 // Importeert een woordenlijst rechtstreeks in een set: nieuwe woorden worden aangemaakt, bestaande
@@ -27,6 +28,16 @@ interface ReviewRow {
         </div>
         <div class="modal-body">
           @if (importStep === 'upload') {
+            @if (!setId) {
+              <label class="lang-label">
+                Taal van de woordjes
+                <select [(ngModel)]="language" name="photoLanguage">
+                  @for (l of languages; track l.value) {
+                    <option [value]="l.value">{{ l.label }}</option>
+                  }
+                </select>
+              </label>
+            }
             <div class="photo-options">
               <button type="button" class="photo-btn" (click)="cameraInput.click()">
                 <i class="fa-solid fa-camera"></i> Foto nemen
@@ -37,7 +48,8 @@ interface ReviewRow {
               <input type="file" accept="image/*" capture="environment" (change)="onPhotoSelected($event)" #cameraInput hidden />
               <input type="file" accept="image/*" (change)="onPhotoSelected($event)" #photoInput hidden />
             </div>
-            <p class="upload-hint center">Fotografeer een woordenlijst met {{ languageLabel }} en de Nederlandse vertaling. Je kijkt alles na voor er iets geïmporteerd wordt.</p>
+            <p class="upload-hint center">Fotografeer een woordenlijst met {{ targetLabel }} en de Nederlandse vertaling. Je kijkt alles na voor er iets geïmporteerd wordt.</p>
+            @if (setId) {
             <div class="divider"><span>of</span></div>
             <div class="upload-area" (dragover)="$event.preventDefault()" (drop)="onImportDrop($event)" (click)="importFileInput.click()">
               <input type="file" accept=".xlsx,.xls" (change)="onImportFileSelected($event)" #importFileInput hidden />
@@ -48,6 +60,7 @@ interface ReviewRow {
             <p class="import-explain">
               Bestaande woorden worden aan deze set toegevoegd, nieuwe woorden worden eerst geïmporteerd.
             </p>
+            }
           }
           @if (importStep === 'loading') {
             <app-loading [message]="loadingMessage"></app-loading>
@@ -70,7 +83,7 @@ interface ReviewRow {
                 <div class="review-row" [class.deselected]="!row.selected">
                   <input type="checkbox" [(ngModel)]="row.selected" [name]="'sel' + $index" />
                   <div class="review-fields">
-                    <input type="text" [(ngModel)]="row.term" [name]="'term' + $index" placeholder="{{ languageLabel }}" (input)="autoSelect(row)" />
+                    <input type="text" [(ngModel)]="row.term" [name]="'term' + $index" placeholder="{{ targetLabel }}" (input)="autoSelect(row)" />
                     <input type="text" [(ngModel)]="row.translation" [name]="'tr' + $index" placeholder="Nederlands" (input)="autoSelect(row)" />
                   </div>
                   <button type="button" class="row-remove" (click)="removeRow($index)" title="Rij verwijderen"><i class="fa-solid fa-trash"></i></button>
@@ -96,10 +109,16 @@ interface ReviewRow {
               <div class="summary-item duplicate">{{ importPreview.duplicateCount }} bestaand</div>
               <div class="summary-item errors">{{ importPreview.errorCount }} fouten</div>
             </div>
-            <p class="import-explain">
-              <strong>{{ importPreview.toAddToSetCount }}</strong>
-              {{ importPreview.toAddToSetCount === 1 ? 'woord wordt' : 'woorden worden' }} aan deze set toegevoegd.
-            </p>
+            @if (setId) {
+              <p class="import-explain">
+                <strong>{{ importPreview.toAddToSetCount }}</strong>
+                {{ importPreview.toAddToSetCount === 1 ? 'woord wordt' : 'woorden worden' }} aan deze set toegevoegd.
+              </p>
+            } @else {
+              <p class="import-explain">
+                Nieuwe woorden worden aan je woordenlijst toegevoegd. Woorden die je al hebt, worden overgeslagen.
+              </p>
+            }
             <div class="import-rows">
               @for (row of importPreview.rows; track row.rowNumber) {
                 <div class="import-row" [class.has-error]="row.errors.length > 0">
@@ -130,7 +149,7 @@ interface ReviewRow {
                 <button type="button" class="btn-secondary" (click)="resetImport()" [disabled]="importBusy">Ander bestand</button>
               }
               <button type="button" class="btn-primary" (click)="confirmImport()"
-                      [disabled]="importBusy || importPreview.toAddToSetCount === 0">
+                      [disabled]="importBusy || !canConfirm">
                 {{ importBusy ? 'Importeren...' : 'Importeren' }}
               </button>
             </div>
@@ -138,9 +157,13 @@ interface ReviewRow {
           @if (importStep === 'done' && importResult) {
             <div class="import-done">
               <i class="fa-solid fa-circle-check"></i>
-              <p><strong>{{ importResult.addedToSet }}</strong> {{ importResult.addedToSet === 1 ? 'woord' : 'woorden' }} toegevoegd aan de set.</p>
+              @if (setId) {
+                <p><strong>{{ importResult.addedToSet }}</strong> {{ importResult.addedToSet === 1 ? 'woord' : 'woorden' }} toegevoegd aan de set.</p>
+              } @else {
+                <p><strong>{{ importResult.imported }}</strong> {{ importResult.imported === 1 ? 'woord' : 'woorden' }} toegevoegd aan je woordenlijst.</p>
+              }
               <p class="import-explain">
-                {{ importResult.imported }} nieuw geïmporteerd
+                @if (setId) { {{ importResult.imported }} nieuw geïmporteerd }
                 @if (importResult.updated > 0) { · {{ importResult.updated }} bijgewerkt }
                 @if (importResult.errors > 0) { · {{ importResult.errors }} met fouten overgeslagen }
               </p>
@@ -222,6 +245,10 @@ interface ReviewRow {
       .btn-primary { background: #0f3460; color: white; &:disabled { opacity: 0.6; } }
       .btn-secondary { background: #e0e0e0; color: #333; }
     }
+    .lang-label {
+      display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 0.75rem;
+      select { padding: 0.55rem; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background: white; }
+    }
     .photo-options {
       display: flex; gap: 0.5rem;
     }
@@ -267,8 +294,23 @@ interface ReviewRow {
   `]
 })
 export class SetImportModalComponent {
-  @Input({ required: true }) setId!: string;
+  /** Leeg = algemene import in de woordenlijst (zonder set); de taal kiest de gebruiker dan zelf. */
+  @Input() setId: string | null = null;
   @Input() languageLabel = '';
+  /** Taalcode (Latin, Greek, ...) voor de algemene import. */
+  @Input() language = 'Latin';
+  languages = LANGUAGES;
+
+  get targetLabel(): string {
+    return this.setId ? this.languageLabel : languageLabel(this.language);
+  }
+
+  get canConfirm(): boolean {
+    const p = this.importPreview;
+    if (!p) return false;
+    if (this.setId) return p.toAddToSetCount > 0;
+    return p.validCount > 0 || (this.importUpdateDuplicates && p.duplicateCount > 0);
+  }
   /** true wanneer er effectief geïmporteerd werd (zodat de set herladen kan worden). */
   @Output() closed = new EventEmitter<boolean>();
 
@@ -341,7 +383,10 @@ export class SetImportModalComponent {
       return;
     }
 
-    this.api.extractSetImportPhoto(this.setId, photo).subscribe({
+    const request = this.setId
+      ? this.api.extractSetImportPhoto(this.setId, photo)
+      : this.api.extractImportPhoto(photo, this.language);
+    request.subscribe({
       next: (res) => {
         const rows = res.rows.map(r => ({
           term: r.term ?? '',
@@ -388,7 +433,10 @@ export class SetImportModalComponent {
     this.importError = '';
     this.loadingMessage = 'Woorden controleren...';
     this.importStep = 'loading';
-    this.api.previewSetImportRows(this.setId, rows).subscribe({
+    const request = this.setId
+      ? this.api.previewSetImportRows(this.setId, rows)
+      : this.api.previewImportRows(rows, this.language);
+    request.subscribe({
       next: (res) => {
         this.importPreview = res;
         this.importUpdateDuplicates = false;
@@ -406,6 +454,7 @@ export class SetImportModalComponent {
     this.loadingMessage = 'Bestand verwerken...';
     this.importStep = 'loading';
     this.importError = '';
+    if (!this.setId) return;
     this.api.previewSetImport(this.setId, file).subscribe({
       next: (res) => {
         this.importPreview = res;
@@ -422,7 +471,10 @@ export class SetImportModalComponent {
     if (!this.importPreview) return;
     this.importBusy = true;
     this.importError = '';
-    this.api.confirmSetImport(this.setId, this.importPreview.sessionId, this.importUpdateDuplicates).subscribe({
+    const request = this.setId
+      ? this.api.confirmSetImport(this.setId, this.importPreview.sessionId, this.importUpdateDuplicates)
+      : this.api.confirmImport(this.importPreview.sessionId, this.importUpdateDuplicates);
+    request.subscribe({
       next: (res) => {
         this.importResult = res;
         this.importStep = 'done';

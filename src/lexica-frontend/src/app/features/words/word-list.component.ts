@@ -5,19 +5,23 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService, SetDto, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
+import { SetImportModalComponent } from '../sets/set-import-modal.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
 import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-word-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent],
+  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent, SetImportModalComponent],
   template: `
     <div class="page">
       <header class="page-header">
         <a routerLink="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
         <h1>Woordenlijst</h1>
         <div class="header-actions">
+          <button type="button" class="header-icon" (click)="showPhotoImport = true" title="Woordjes van een foto importeren">
+            <i class="fa-solid fa-camera"></i>
+          </button>
           <a routerLink="/import" class="header-icon" title="Importeren">
             <i class="fa-solid fa-file-import"></i>
           </a>
@@ -212,6 +216,9 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
           </div>
         </div>
       }
+      @if (showPhotoImport) {
+        <app-set-import-modal [language]="languageFilter || 'Latin'" (closed)="onPhotoImportClosed($event)"></app-set-import-modal>
+      }
     </div>
   `,
   styles: [`
@@ -243,6 +250,10 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
     }
 
     .header-icon {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
       color: white;
       text-decoration: none;
       font-size: 1.25rem;
@@ -429,6 +440,7 @@ export class WordListComponent implements OnInit {
   sortDir: 'asc' | 'desc' = 'asc';
   loading = true;
 
+  showPhotoImport = false;
   selectedWordIds = new Set<string>();
   showBulkModal = false;
   bulkStep: 'choose' | 'confirmDelete' | 'name' | 'pickSet' | 'langError' = 'choose';
@@ -453,6 +465,11 @@ export class WordListComponent implements OnInit {
     }
     this.languageFilter = localStorage.getItem('lexica.languageFilter') ?? '';
     this.loadWords();
+  }
+
+  onPhotoImportClosed(imported: boolean) {
+    this.showPhotoImport = false;
+    if (imported) this.loadWords();
   }
 
   loadWords() {

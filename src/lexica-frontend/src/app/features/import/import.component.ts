@@ -4,21 +4,29 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { SetImportModalComponent } from '../sets/set-import-modal.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
 
 @Component({
   selector: 'app-import',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingComponent, SetImportModalComponent],
   template: `
     <div class="page">
       <header class="page-header">
         <a routerLink="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
-        <h1>Excel importeren</h1>
+        <h1>Importeren</h1>
       </header>
 
       <div class="content">
         @if (step === 'upload') {
+          <button type="button" class="photo-import-btn" (click)="showPhotoImport = true">
+            <i class="fa-solid fa-camera"></i>
+            <div>
+              <strong>Foto van een woordenlijst</strong>
+              <span>Neem of kies een foto, kijk de woordjes na en importeer</span>
+            </div>
+          </button>
           <div class="upload-area" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
             <input type="file" accept=".xlsx,.xls" (change)="onFileSelected($event)" #fileInput hidden />
             <div class="upload-content" (click)="fileInput.click()">
@@ -147,6 +155,9 @@ import { LoadingComponent } from '../../shared/components/loading.component';
           <div class="error-msg">{{ error }}</div>
         }
       </div>
+      @if (showPhotoImport) {
+        <app-set-import-modal (closed)="onPhotoImportClosed($event)"></app-set-import-modal>
+      }
     </div>
   `,
   styles: [`
@@ -165,6 +176,15 @@ import { LoadingComponent } from '../../shared/components/loading.component';
     h1 { flex: 1; font-size: 1.25rem; margin: 0; }
 
     .content { padding: 1.5rem; max-width: 600px; margin: 0 auto; }
+
+    .photo-import-btn {
+      width: 100%; display: flex; align-items: center; gap: 1rem; text-align: left;
+      padding: 1.1rem 1.25rem; margin-bottom: 1rem; border: none; border-radius: 16px;
+      background: #0f3460; color: white; cursor: pointer;
+      i { font-size: 1.75rem; }
+      strong { display: block; font-size: 1rem; }
+      span { font-size: 0.8rem; opacity: 0.85; }
+    }
 
     .upload-area {
       border: 3px dashed #ccc;
@@ -340,6 +360,7 @@ import { LoadingComponent } from '../../shared/components/loading.component';
 })
 export class ImportComponent {
   step: 'upload' | 'loading' | 'preview' | 'done' = 'upload';
+  showPhotoImport = false;
   preview: any = null;
   result: any = null;
   updateDuplicates = false;
@@ -352,6 +373,11 @@ export class ImportComponent {
     private http: HttpClient,
     public router: Router
   ) {}
+
+  onPhotoImportClosed(imported: boolean) {
+    this.showPhotoImport = false;
+    if (imported) this.router.navigate(['/words']);
+  }
 
   onDragOver(event: DragEvent) {
     event.preventDefault();

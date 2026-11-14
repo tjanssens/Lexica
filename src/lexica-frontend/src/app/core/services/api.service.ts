@@ -161,6 +161,21 @@ export class ApiService {
     return this.http.post<ImportPreviewResponse>(`${this.baseUrl}/sets/${setId}/import/preview-rows`, { rows });
   }
 
+  /** Foto-import voor de algemene woordenlijst (zonder set) in de gekozen taal. */
+  extractImportPhoto(photo: Blob, language: string): Observable<PhotoImportResponse> {
+    const formData = new FormData();
+    formData.append('file', photo, 'foto.jpg');
+    return this.http.post<PhotoImportResponse>(`${this.baseUrl}/words/import/photo`, formData, { params: { language } });
+  }
+
+  previewImportRows(rows: ImportRowInput[], language: string): Observable<ImportPreviewResponse> {
+    return this.http.post<ImportPreviewResponse>(`${this.baseUrl}/words/import/preview-rows`, { rows, language });
+  }
+
+  confirmImport(sessionId: string, updateDuplicates: boolean): Observable<ImportResultResponse> {
+    return this.http.post<ImportResultResponse>(`${this.baseUrl}/words/import/confirm`, { sessionId, updateDuplicates });
+  }
+
   confirmSetImport(setId: string, sessionId: string, updateDuplicates: boolean): Observable<ImportResultResponse> {
     return this.http.post<ImportResultResponse>(`${this.baseUrl}/sets/${setId}/import/confirm`, { sessionId, updateDuplicates });
   }
