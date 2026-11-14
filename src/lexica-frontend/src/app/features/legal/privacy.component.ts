@@ -55,6 +55,12 @@ import { RouterLink } from '@angular/router';
           <ul>
             <li>Woorden, vertalingen en woordgroepen die je toevoegt</li>
             <li>Woordensets (privé of openbaar gedeeld)</li>
+            <li>
+              Foto's van woordenlijsten die je gebruikt om woordjes te importeren (optioneel). Een
+              foto wordt alleen gebruikt om de woordjes uit te lezen en wordt door Lexica
+              <strong>niet bewaard</strong>; enkel de woordjes die je na controle importeert, komen in je account.
+              Fotografeer bij voorkeur alleen de woordenlijst, zonder namen of andere persoonsgegevens.
+            </li>
           </ul>
           <p class="note">
             <strong>Let op:</strong> als je een set publiek deelt, wordt je weergavenaam zichtbaar
@@ -145,6 +151,16 @@ import { RouterLink } from '@angular/router';
               (Skaldenstraat 121, 9042 Gent, België). Combell verwerkt enkel je e-mailadres
               en de inhoud van de e-mail om de mail te bezorgen. Combell is een Belgische
               verwerker; je gegevens verlaten de Europese Economische Ruimte niet.
+            </li>
+            <li>
+              <strong>Anthropic (alleen bij foto-import):</strong> als je woordjes importeert via een
+              foto, sturen we die foto naar de API van Anthropic PBC (San Francisco, Verenigde Staten),
+              die met het AI-model Claude de woordjes en vertalingen uitleest. Anthropic ontvangt
+              enkel de foto en de taal van de set, niet je naam, e-mailadres of andere accountgegevens.
+              Anthropic gebruikt deze gegevens niet om zijn modellen te trainen en bewaart ze slechts
+              tijdelijk voor beveiliging en misbruikdetectie. Omdat Anthropic buiten de EER gevestigd is,
+              gebeurt deze doorgifte met passende waarborgen (standaardcontractbepalingen van de
+              Europese Commissie). Gebruik je de foto-import niet, dan wordt niets met Anthropic gedeeld.
             </li>
             <li>
               <strong>Push-bezorgdiensten (alleen bij notificaties):</strong> als je push-notificaties
@@ -273,9 +289,12 @@ import { RouterLink } from '@angular/router';
             hoogte via e-mail of een melding in de app.
           </p>
           <p class="version">
-            <strong>Laatste update:</strong> 30 mei 2026<br />
-            <strong>Versie:</strong> 1.4<br />
+            <strong>Laatste update:</strong> 14 november 2026<br />
+            <strong>Versie:</strong> 1.5<br />
             <span class="version-note">
+              Wijzigingen t.o.v. versie 1.4: optionele foto-import van woordenlijsten toegevoegd.
+              De foto wordt voor het uitlezen naar Anthropic (Claude) gestuurd en niet door Lexica bewaard.
+              <br />
               Wijzigingen t.o.v. versie 1.3: optionele push-notificaties toegevoegd. We bewaren
               hiervoor een push-abonnement (technische sleutel) en de bezorging verloopt via de
               push-dienst van je browser (Google, Mozilla of Apple). Notificaties zijn opt-in en

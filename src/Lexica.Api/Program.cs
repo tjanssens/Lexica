@@ -61,6 +61,11 @@ builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<ExcelExportService>();
 builder.Services.AddScoped<SetForkService>();
 
+// Foto-import van woordenlijsten via Claude (Anthropic API). Zonder Anthropic:ApiKey
+// (env var Anthropic__ApiKey) is de foto-import uitgeschakeld; de rest van de app werkt gewoon.
+builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
+builder.Services.AddScoped<PhotoWordExtractionService>();
+
 // Email (SMTP)
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();

@@ -35,7 +35,7 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
         }
         @if (!isNew && set && set.isOwner && !editingName) {
           <button class="header-btn" (click)="showAddModal = true" title="Woorden toevoegen"><i class="fa-solid fa-plus"></i></button>
-          <button class="header-btn" (click)="openImportModal()" title="Woordenlijst importeren"><i class="fa-solid fa-file-import"></i></button>
+          <button class="header-btn" (click)="openImportModal()" title="Woordenlijst importeren (foto of Excel)"><i class="fa-solid fa-file-import"></i></button>
           <button class="header-btn delete" (click)="deleteSet()"><i class="fa-solid fa-trash"></i></button>
         }
       </header>
@@ -159,7 +159,7 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
                   @if (addError) { <div class="error">{{ addError }}</div> }
                   <button class="btn-submit" (click)="addByRange()">Toevoegen</button>
                   <button type="button" class="link-btn" (click)="showAddModal = false; openImportModal()">
-                    <i class="fa-solid fa-file-import"></i> Of importeer een woordenlijst (Excel)
+                    <i class="fa-solid fa-file-import"></i> Of importeer een woordenlijst (foto of Excel)
                   </button>
                 </div>
               </div>

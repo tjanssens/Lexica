@@ -131,4 +131,66 @@ public class SetsControllerSecurityTests
 
         Assert.True(await db.SetWords.AnyAsync(sw => sw.SetId == set.Id && sw.WordId == word.Id));
     }
+
+    private static PhotoWordExtractionService PhotoService(string? apiKey) => new(
+        Microsoft.Extensions.Options.Options.Create(new AnthropicOptions { ApiKey = apiKey }),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<PhotoWordExtractionService>.Instance);
+
+    private static IFormFile Photo(string contentType, int size = 10)
+    {
+        var stream = new MemoryStream(new byte[size]);
+        return new FormFile(stream, 0, size, "file", "foto.jpg") { Headers = new HeaderDictionary(), ContentType = contentType };
+    }
+
+    [Fact]
+    public async Task ImportPhoto_WeigertSetVanAndereGebruiker()
+    {
+        using var db = NewDb();
+        var owner = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = owner.Id, Name = "S", Language = Language.Latin, IsPublic = true };
+        db.Users.Add(owner);
+        db.Sets.Add(set);
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, Guid.NewGuid());
+        var result = await controller.ImportPhoto(set.Id, Photo("image/jpeg"), PhotoService("key"),
+            new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()), default);
+
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task ImportPhoto_ZonderApiSleutelGeeft503EnGeenFotoVerwerking()
+    {
+        using var db = NewDb();
+        var owner = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = owner.Id, Name = "S", Language = Language.Latin };
+        db.Users.Add(owner);
+        db.Sets.Add(set);
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, owner.Id);
+        var result = await controller.ImportPhoto(set.Id, Photo("image/jpeg"), PhotoService(null),
+            new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()), default);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task ImportPhoto_WeigertGeenAfbeelding()
+    {
+        using var db = NewDb();
+        var owner = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = owner.Id, Name = "S", Language = Language.Latin };
+        db.Users.Add(owner);
+        db.Sets.Add(set);
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, owner.Id);
+        var result = await controller.ImportPhoto(set.Id, Photo("application/pdf"), PhotoService("key"),
+            new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()), default);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 }

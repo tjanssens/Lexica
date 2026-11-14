@@ -149,6 +149,18 @@ export class ApiService {
     return this.http.post<ImportPreviewResponse>(`${this.baseUrl}/sets/${setId}/import/preview`, formData);
   }
 
+  /** Laat de woordjes op een foto herkennen (Claude). Importeert nog niets. */
+  extractSetImportPhoto(setId: string, photo: Blob): Observable<PhotoImportResponse> {
+    const formData = new FormData();
+    formData.append('file', photo, 'foto.jpg');
+    return this.http.post<PhotoImportResponse>(`${this.baseUrl}/sets/${setId}/import/photo`, formData);
+  }
+
+  /** Preview voor een nagekeken lijst (term, vertaling)-paren, bv. van een foto. */
+  previewSetImportRows(setId: string, rows: ImportRowInput[]): Observable<ImportPreviewResponse> {
+    return this.http.post<ImportPreviewResponse>(`${this.baseUrl}/sets/${setId}/import/preview-rows`, { rows });
+  }
+
   confirmSetImport(setId: string, sessionId: string, updateDuplicates: boolean): Observable<ImportResultResponse> {
     return this.http.post<ImportResultResponse>(`${this.baseUrl}/sets/${setId}/import/confirm`, { sessionId, updateDuplicates });
   }
@@ -392,6 +404,15 @@ export interface ImportPreviewResponse {
   renumberedCount: number;
   sessionId: string;
   toAddToSetCount: number;
+}
+
+export interface ImportRowInput {
+  term: string;
+  translation: string;
+}
+
+export interface PhotoImportResponse {
+  rows: ImportRowInput[];
 }
 
 export interface ImportResultResponse {

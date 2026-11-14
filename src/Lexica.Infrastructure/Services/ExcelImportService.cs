@@ -21,7 +21,70 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
     // vanuit een set: alle geldige woorden (nieuw én bestaand) worden dan aan die set gekoppeld.
     private sealed record ImportSession(List<ImportPreviewRow> Rows, Guid? TargetSetId);
 
-    public async Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId, Guid? targetSetId = null)
+    // Eén ingelezen rij, nog niet gevalideerd. Komt uit een Excel-bestand of uit een lijst
+    // (term, vertaling)-paren, bv. herkend op een foto.
+    private sealed record RawRow(
+        int RowNumber, string? Number, string? Language, string? Term, string? Translation,
+        string? PartOfSpeech, string? Notes, string? Easiness, string? Interval,
+        string? Repetitions, string? DueDate, string? Group);
+
+    public Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId, Guid? targetSetId = null)
+    {
+        var rawRows = new List<RawRow>();
+        using (var workbook = new XLWorkbook(fileStream))
+        {
+            var worksheet = workbook.Worksheets.First();
+            var headerRow = worksheet.Row(1);
+
+            // Map column indices by header name
+            var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int col = 1; col <= headerRow.LastCellUsed()?.Address.ColumnNumber; col++)
+            {
+                var header = headerRow.Cell(col).GetString().Trim().TrimEnd('*');
+                if (!string.IsNullOrEmpty(header))
+                    columns[header] = col;
+            }
+
+            for (int row = 2; row <= worksheet.LastRowUsed()?.RowNumber(); row++)
+            {
+                var wsRow = worksheet.Row(row);
+                rawRows.Add(new RawRow(
+                    row,
+                    GetCellValue(wsRow, columns, "number"),
+                    GetCellValue(wsRow, columns, "language"),
+                    GetCellValue(wsRow, columns, "term"),
+                    GetCellValue(wsRow, columns, "translation"),
+                    GetCellValue(wsRow, columns, "part_of_speech"),
+                    GetCellValue(wsRow, columns, "notes"),
+                    GetCellValue(wsRow, columns, "easiness"),
+                    GetCellValue(wsRow, columns, "interval"),
+                    GetCellValue(wsRow, columns, "repetitions"),
+                    GetCellValue(wsRow, columns, "due_date"),
+                    GetCellValue(wsRow, columns, "group")));
+            }
+        }
+        return BuildPreview(rawRows, userId, targetSetId);
+    }
+
+    // Preview voor een lijst (term, vertaling)-paren zonder Excel, bv. herkend op een foto.
+    // Taal is leeg en valt dus terug op de taal van de set.
+    public Task<ImportPreviewResponse> PreviewRows(IEnumerable<ImportRowInput> input, Guid userId, Guid targetSetId)
+    {
+        var rawRows = input
+            .Select((r, i) => new RawRow(
+                i + 1, null, null, Clean(r.Term), Clean(r.Translation),
+                null, null, null, null, null, null, null))
+            .ToList();
+        return BuildPreview(rawRows, userId, targetSetId);
+    }
+
+    private static string? Clean(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    private async Task<ImportPreviewResponse> BuildPreview(List<RawRow> rawRows, Guid userId, Guid? targetSetId)
     {
         var rows = new List<ImportPreviewRow>();
 
@@ -61,35 +124,21 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
         // Unieke termen die bij bevestiging nieuw aan de set gekoppeld worden.
         var toAddToSet = new HashSet<string>();
 
-        using var workbook = new XLWorkbook(fileStream);
-        var worksheet = workbook.Worksheets.First();
-        var headerRow = worksheet.Row(1);
-
-        // Map column indices by header name
-        var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (int col = 1; col <= headerRow.LastCellUsed()?.Address.ColumnNumber; col++)
-        {
-            var header = headerRow.Cell(col).GetString().Trim().TrimEnd('*');
-            if (!string.IsNullOrEmpty(header))
-                columns[header] = col;
-        }
-
-        for (int row = 2; row <= worksheet.LastRowUsed()?.RowNumber(); row++)
+        foreach (var raw in rawRows)
         {
             var errors = new List<string>();
-            var wsRow = worksheet.Row(row);
-
-            var numberStr = GetCellValue(wsRow, columns, "number");
-            var langStr = GetCellValue(wsRow, columns, "language");
-            var term = GetCellValue(wsRow, columns, "term");
-            var translation = GetCellValue(wsRow, columns, "translation");
-            var partOfSpeech = GetCellValue(wsRow, columns, "part_of_speech");
-            var notes = GetCellValue(wsRow, columns, "notes");
-            var easinessStr = GetCellValue(wsRow, columns, "easiness");
-            var intervalStr = GetCellValue(wsRow, columns, "interval");
-            var repsStr = GetCellValue(wsRow, columns, "repetitions");
-            var dueDateStr = GetCellValue(wsRow, columns, "due_date");
-            var group = GetCellValue(wsRow, columns, "group");
+            var row = raw.RowNumber;
+            var numberStr = raw.Number;
+            var langStr = raw.Language;
+            var term = raw.Term;
+            var translation = raw.Translation;
+            var partOfSpeech = raw.PartOfSpeech;
+            var notes = raw.Notes;
+            var easinessStr = raw.Easiness;
+            var intervalStr = raw.Interval;
+            var repsStr = raw.Repetitions;
+            var dueDateStr = raw.DueDate;
+            var group = raw.Group;
 
             // Lege rij overslaan. Het nummer is niet langer leidend — de term is de identiteit.
             if (string.IsNullOrEmpty(term) && string.IsNullOrEmpty(translation)) continue;

@@ -97,7 +97,7 @@ Lexica.Shared         → DTOs (gedeeld tussen lagen)
 - `SessionsController` — Studiesessies met SM-2 spaced repetition
 - `StatsController` — Statistieken, weekoverzicht, achievements
 - `ImportController` — Excel import met preview en bevestiging
-- `SetsController` — CRUD voor sets, public set discovery, subscriptions, **fork/split/merge/move-words** (delegeert naar `SetForkService`) en **import van een woordenlijst in een set** (`POST {id}/import/preview|confirm`, hergebruikt `ExcelImportService`)
+- `SetsController` — CRUD voor sets, public set discovery, subscriptions, **fork/split/merge/move-words** (delegeert naar `SetForkService`) en **import van een woordenlijst in een set** (`POST {id}/import/preview|confirm`, hergebruikt `ExcelImportService`), ook **vanaf een foto** (`POST {id}/import/photo` leest de woordjes uit met Claude via `PhotoWordExtractionService`, daarna `POST {id}/import/preview-rows` met de nagekeken rijen)
 
 **Domeinmodel** (`src/Lexica.Core/Entities/`):
 - `ApplicationUser` (extends IdentityUser\<Guid>) — XP, Level, Streak, SessionSize
@@ -135,6 +135,15 @@ src/lexica-frontend/src/app/
 - SM-2 algoritme zit in `Sm2Service` (`src/Lexica.Core/Services/Sm2Service.cs`)
 - Fork/split/merge/move-words logica voor sets zit in `SetForkService` (`src/Lexica.Infrastructure/Services/SetForkService.cs`)
 - Excel import/export via ClosedXML in `src/Lexica.Infrastructure/Services/`
+
+## Foto-import (Claude / Anthropic API)
+
+`PhotoWordExtractionService` (`src/Lexica.Infrastructure/Services/`) stuurt een foto van een woordenlijst naar de Anthropic API (officiële `Anthropic` NuGet-SDK, structured output) en geeft (term, vertaling)-paren terug. De foto wordt niet bewaard; de gebruiker kijkt de rijen na in `set-import-modal` voor er iets geïmporteerd wordt.
+
+- Config-sectie `Anthropic`: `ApiKey` (**nooit committen**; productie: `ANTHROPIC_API_KEY=...` in `C:\apps\lexica\.env`, docker-compose.yml geeft hem door als `Anthropic__ApiKey`, lokaal: `dotnet user-secrets set "Anthropic:ApiKey" ...`), `Model` (standaard `claude-opus-5-5`).
+- Zonder sleutel geeft `POST api/sets/{id}/import/photo` een 503 met een duidelijke melding; de rest van de app werkt gewoon.
+- Limiet: 30 foto's per gebruiker per dag (in-memory, `SetsController.MaxPhotosPerUserPerDay`).
+- Anthropic staat als verwerker in de privacyverklaring (v1.5) en de foto-import in artikel 3 van de gebruiksvoorwaarden (v1.3).
 
 ## Geparkeerde features
 
