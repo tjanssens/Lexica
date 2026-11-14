@@ -233,4 +233,98 @@ public class ExcelImportServiceTests
         var word = await db.Words.SingleAsync(w => w.UserId == user.Id && w.Term == "savoir");
         Assert.Equal("x", word.Translation); // ongewijzigd
     }
+
+    private static async Task<Set> SeedSetAsync(AppDbContext db, Guid userId, Language lang, params string[] termsInSet)
+    {
+        var set = new Set { Id = Guid.NewGuid(), UserId = userId, Name = "Set", Language = lang };
+        db.Sets.Add(set);
+        foreach (var term in termsInSet)
+        {
+            var word = await db.Words.SingleAsync(w => w.UserId == userId && w.Term == term);
+            db.SetWords.Add(new SetWord { SetId = set.Id, WordId = word.Id });
+        }
+        await db.SaveChangesAsync();
+        return set;
+    }
+
+    [Fact]
+    public async Task ImportInSet_NieuweEnBestaandeWoordenWordenAanSetToegevoegd()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db,
+            (1, Language.French, "avoir"),
+            (2, Language.French, "être"));
+        var set = await SeedSetAsync(db, user.Id, Language.French, "être");
+        var service = NewService(db);
+
+        using var excel = BuildExcel(
+            ("1", "Frans", "avoir", "hebben"),   // bestaat al, nog niet in set
+            ("2", "Frans", "être", "zijn"),      // bestaat al, zit al in set
+            ("3", "Frans", "aller", "gaan"),     // nieuw
+            ("4", "", "venir", "komen"));        // nieuw, taal valt terug op set
+
+        var preview = await service.Preview(excel, user.Id, set.Id);
+        Assert.Equal(0, preview.ErrorCount);
+        Assert.Equal(2, preview.ValidCount);
+        Assert.Equal(2, preview.DuplicateCount);
+        Assert.Equal(3, preview.ToAddToSetCount);
+        Assert.True(preview.Rows.Single(r => r.Term == "être").AlreadyInSet);
+
+        var result = await service.Confirm(preview.SessionId, user.Id, updateDuplicates: false, set.Id);
+        Assert.Equal(2, result.Imported);
+        Assert.Equal(2, result.Skipped);
+        Assert.Equal(3, result.AddedToSet);
+
+        var termsInSet = await db.SetWords.Where(sw => sw.SetId == set.Id).Select(sw => sw.Word.Term).ToListAsync();
+        Assert.Equal(new[] { "aller", "avoir", "venir", "être" }, termsInSet.OrderBy(t => t, StringComparer.Ordinal));
+        Assert.Equal(4, await db.Words.CountAsync(w => w.UserId == user.Id));
+    }
+
+    [Fact]
+    public async Task ImportInSet_AndereTaalGeeftFout()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db);
+        var set = await SeedSetAsync(db, user.Id, Language.French);
+        var service = NewService(db);
+
+        using var excel = BuildExcel(("1", "Latijn", "amare", "liefhebben"));
+        var preview = await service.Preview(excel, user.Id, set.Id);
+
+        Assert.Equal(1, preview.ErrorCount);
+        var result = await service.Confirm(preview.SessionId, user.Id, updateDuplicates: false, set.Id);
+        Assert.Equal(0, result.Imported);
+        Assert.Equal(0, await db.SetWords.CountAsync());
+    }
+
+    [Fact]
+    public async Task ImportInSet_SetVanAndereGebruikerWordtGeweigerd()
+    {
+        using var db = NewDb();
+        var owner = await SeedUserAsync(db);
+        var other = await SeedUserAsync(db);
+        var set = await SeedSetAsync(db, owner.Id, Language.French);
+        var service = NewService(db);
+
+        using var excel = BuildExcel(("1", "Frans", "aller", "gaan"));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.Preview(excel, other.Id, set.Id));
+    }
+
+    [Fact]
+    public async Task ImportInSet_SessieKanNietVoorAndereSetGebruiktWorden()
+    {
+        using var db = NewDb();
+        var user = await SeedUserAsync(db);
+        var setA = await SeedSetAsync(db, user.Id, Language.French);
+        var setB = await SeedSetAsync(db, user.Id, Language.French);
+        var service = NewService(db);
+
+        using var excel = BuildExcel(("1", "Frans", "aller", "gaan"));
+        var preview = await service.Preview(excel, user.Id, setA.Id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.Confirm(preview.SessionId, user.Id, updateDuplicates: false, setB.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.Confirm(preview.SessionId, user.Id, updateDuplicates: false));
+    }
 }

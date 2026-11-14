@@ -143,6 +143,16 @@ export class ApiService {
     return this.http.post<{ added: number }>(`${this.baseUrl}/sets/${setId}/words`, request);
   }
 
+  previewSetImport(setId: string, file: File): Observable<ImportPreviewResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<ImportPreviewResponse>(`${this.baseUrl}/sets/${setId}/import/preview`, formData);
+  }
+
+  confirmSetImport(setId: string, sessionId: string, updateDuplicates: boolean): Observable<ImportResultResponse> {
+    return this.http.post<ImportResultResponse>(`${this.baseUrl}/sets/${setId}/import/confirm`, { sessionId, updateDuplicates });
+  }
+
   getPublicSets(language?: string, search?: string): Observable<PublicSetDto[]> {
     let params = new HttpParams();
     if (language) params = params.set('language', language);
@@ -359,4 +369,35 @@ export interface AddWordsToSetRequest {
   wordIds?: string[];
   fromNumber?: number;
   toNumber?: number;
+}
+
+export interface ImportPreviewRow {
+  rowNumber: number;
+  originalNumber: number | null;
+  number: number;
+  language: string;
+  term: string;
+  translation: string;
+  isDuplicate: boolean;
+  numberChanged: boolean;
+  errors: string[];
+  alreadyInSet: boolean;
+}
+
+export interface ImportPreviewResponse {
+  rows: ImportPreviewRow[];
+  validCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  renumberedCount: number;
+  sessionId: string;
+  toAddToSetCount: number;
+}
+
+export interface ImportResultResponse {
+  imported: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+  addedToSet: number;
 }

@@ -22,7 +22,8 @@ public class SetsControllerSecurityTests
 
     private static SetsController NewController(AppDbContext db, Guid userId)
     {
-        var controller = new SetsController(db, new SetForkService(db));
+        var controller = new SetsController(db, new SetForkService(db),
+            new ExcelImportService(db, new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions())));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

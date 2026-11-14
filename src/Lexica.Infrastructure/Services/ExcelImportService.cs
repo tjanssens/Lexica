@@ -17,9 +17,29 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
 
     private static string SessionKey(string sessionId) => $"import-session:{sessionId}";
 
-    public async Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId)
+    // Wat tussen preview en bevestiging bewaard wordt. TargetSetId is gezet bij een import
+    // vanuit een set: alle geldige woorden (nieuw én bestaand) worden dan aan die set gekoppeld.
+    private sealed record ImportSession(List<ImportPreviewRow> Rows, Guid? TargetSetId);
+
+    public async Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId, Guid? targetSetId = null)
     {
         var rows = new List<ImportPreviewRow>();
+
+        // Bij import in een set: enkel woorden in de taal van de set zijn toegelaten. Een lege
+        // taalkolom valt terug op de taal van de set. Woorden die al in de set zitten markeren we.
+        Language? setLanguage = null;
+        var termsInSet = new HashSet<string>();
+        if (targetSetId.HasValue)
+        {
+            var set = await db.Sets.FirstOrDefaultAsync(s => s.Id == targetSetId.Value && s.UserId == userId)
+                ?? throw new KeyNotFoundException("Set niet gevonden.");
+            setLanguage = set.Language;
+            var setTerms = await db.SetWords
+                .Where(sw => sw.SetId == set.Id)
+                .Select(sw => sw.Word.Term)
+                .ToListAsync();
+            termsInSet = setTerms.Select(NormalizeTerm).ToHashSet();
+        }
 
         // Bestaande woorden bepalen de identiteit (genormaliseerde term + taal) en
         // het startpunt voor de hernummering (hoogste nummer per taal).
@@ -38,6 +58,8 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
 
         // Termen die binnen dít bestand al een nummer toegewezen kregen (in-bestand-dubbels).
         var seenInFile = new HashSet<(Language, string)>();
+        // Unieke termen die bij bevestiging nieuw aan de set gekoppeld worden.
+        var toAddToSet = new HashSet<string>();
 
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheets.First();
@@ -77,7 +99,11 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
 
             if (string.IsNullOrEmpty(term)) errors.Add("Term is verplicht");
             if (string.IsNullOrEmpty(translation)) errors.Add("Vertaling is verplicht");
+            if (setLanguage.HasValue && string.IsNullOrEmpty(langStr))
+                langStr = setLanguage.Value.ToString();
             if (!TryParseLanguage(langStr, out var lang)) errors.Add("Ongeldige taal");
+            else if (setLanguage.HasValue && lang != setLanguage.Value)
+                errors.Add($"Taal past niet bij de set ({setLanguage.Value})");
 
             double? easiness = string.IsNullOrEmpty(easinessStr) ? null : double.TryParse(easinessStr, out var ef) ? ef : null;
             int? interval = string.IsNullOrEmpty(intervalStr) ? null : int.TryParse(intervalStr, out var iv) ? iv : null;
@@ -85,12 +111,15 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             DateTime? dueDate = string.IsNullOrEmpty(dueDateStr) ? null : DateTime.TryParse(dueDateStr, out var dd) ? dd : null;
 
             var isDuplicate = false;
+            var alreadyInSet = false;
             var assignedNumber = originalNumber ?? 0;
             var numberChanged = false;
 
             if (errors.Count == 0)
             {
                 var key = (lang, NormalizeTerm(term!));
+                alreadyInSet = setLanguage.HasValue && termsInSet.Contains(key.Item2);
+                if (setLanguage.HasValue && !alreadyInSet) toAddToSet.Add(key.Item2);
                 if (existingTerms.Contains(key) || seenInFile.Contains(key))
                 {
                     isDuplicate = true;
@@ -106,11 +135,11 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             rows.Add(new ImportPreviewRow(
                 row, originalNumber, assignedNumber, langStr ?? "", term ?? "", translation ?? "",
                 partOfSpeech, notes, easiness, interval, reps, dueDate,
-                group, isDuplicate, numberChanged, errors));
+                group, isDuplicate, numberChanged, errors, alreadyInSet));
         }
 
         var sessionId = Guid.NewGuid().ToString();
-        cache.Set(SessionKey(sessionId), rows, SessionLifetime);
+        cache.Set(SessionKey(sessionId), new ImportSession(rows, targetSetId), SessionLifetime);
 
         return new ImportPreviewResponse(
             rows,
@@ -118,16 +147,41 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             rows.Count(r => r.IsDuplicate),
             rows.Count(r => r.Errors.Count > 0),
             rows.Count(r => r.NumberChanged),
-            sessionId
+            sessionId,
+            toAddToSet.Count
         );
     }
 
-    public async Task<ImportResultResponse> Confirm(string sessionId, Guid userId, bool updateDuplicates)
+    public async Task<ImportResultResponse> Confirm(string sessionId, Guid userId, bool updateDuplicates, Guid? targetSetId = null)
     {
-        if (!cache.TryGetValue(SessionKey(sessionId), out List<ImportPreviewRow>? rows) || rows is null)
+        if (!cache.TryGetValue(SessionKey(sessionId), out ImportSession? session) || session is null)
             throw new InvalidOperationException("Import sessie niet gevonden.");
 
-        int imported = 0, updated = 0, skipped = 0, errors = 0;
+        // Een sessie hoort bij precies één doel: de algemene import of één specifieke set.
+        if (session.TargetSetId != targetSetId)
+            throw new InvalidOperationException("Import sessie hoort niet bij deze set.");
+
+        var rows = session.Rows;
+        int imported = 0, updated = 0, skipped = 0, errors = 0, addedToSet = 0;
+
+        Set? targetSet = null;
+        var wordIdsInSet = new HashSet<Guid>();
+        if (targetSetId.HasValue)
+        {
+            targetSet = await db.Sets.FirstOrDefaultAsync(s => s.Id == targetSetId.Value && s.UserId == userId)
+                ?? throw new KeyNotFoundException("Set niet gevonden.");
+            wordIdsInSet = (await db.SetWords
+                .Where(sw => sw.SetId == targetSet.Id)
+                .Select(sw => sw.WordId)
+                .ToListAsync()).ToHashSet();
+        }
+
+        void AddToSet(Word w)
+        {
+            if (targetSet == null || w.Language != targetSet.Language || !wordIdsInSet.Add(w.Id)) return;
+            db.SetWords.Add(new SetWord { SetId = targetSet.Id, WordId = w.Id });
+            addedToSet++;
+        }
 
         // Match op (taal, genormaliseerde term) tegen de actuele DB en hernummer per taal.
         // We herberekenen hier i.p.v. het preview-nummer te hergebruiken, zodat de toegekende
@@ -151,6 +205,7 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             // Bestaand woord (in DB of eerder in deze import aangemaakt) met dezelfde term+taal.
             if (byTerm.TryGetValue(key, out var existingWord))
             {
+                AddToSet(existingWord);
                 if (updateDuplicates)
                 {
                     existingWord.Term = row.Term;
@@ -190,6 +245,7 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
             };
             db.Words.Add(word);
             byTerm[key] = word;
+            AddToSet(word);
 
             var wordProgress = new UserWordProgress
             {
@@ -228,7 +284,7 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
         await db.SaveChangesAsync();
         cache.Remove(SessionKey(sessionId));
 
-        return new ImportResultResponse(imported, updated, skipped, errors);
+        return new ImportResultResponse(imported, updated, skipped, errors, addedToSet);
     }
 
     // Identiteit van een woord binnen een taal: hoofdletter- en spatie-ongevoelig, accenten blijven onderscheidend.

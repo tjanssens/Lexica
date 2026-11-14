@@ -13,7 +13,7 @@ namespace Lexica.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class SetsController(AppDbContext db, SetForkService forkService) : ControllerBase
+public class SetsController(AppDbContext db, SetForkService forkService, ExcelImportService importService) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -223,6 +223,38 @@ public class SetsController(AppDbContext db, SetForkService forkService) : Contr
 
         await db.SaveChangesAsync();
         return Ok(new { Added = wordIds.Count(wid => !existingWordIds.Contains(wid)) });
+    }
+
+    // Import van een woordenlijst (zelfde Excel-template als /api/words/import) rechtstreeks in een set.
+    // Nieuwe woorden worden aangemaakt, bestaande woorden (zelfde term + taal) worden hergebruikt;
+    // in beide gevallen worden ze aan de set gekoppeld.
+    [HttpPost("{id:guid}/import/preview")]
+    public async Task<ActionResult<ImportPreviewResponse>> ImportPreview(Guid id, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("Geen bestand geüpload.");
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (extension != ".xlsx" && extension != ".xls")
+            return BadRequest("Alleen Excel-bestanden (.xlsx, .xls) zijn toegestaan.");
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            return Ok(await importService.Preview(stream, UserId, id));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    [HttpPost("{id:guid}/import/confirm")]
+    public async Task<ActionResult<ImportResultResponse>> ImportConfirm(Guid id, ImportConfirmRequest request)
+    {
+        try
+        {
+            return Ok(await importService.Confirm(request.SessionId, UserId, request.UpdateDuplicates, id));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 
     [HttpDelete("{id:guid}/words")]
