@@ -75,6 +75,9 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
             </div>
             @if (error) { <div class="error">{{ error }}</div> }
             <button type="submit">Aanmaken</button>
+            <button type="button" class="btn-create-import" (click)="createSet(true)">
+              <i class="fa-solid fa-file-import"></i> Aanmaken en woordenlijst importeren
+            </button>
           </form>
         } @else if (set) {
           @if (!set.isOwner) {
@@ -412,6 +415,12 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
       &:hover { background: #1a1a2e; }
     }
 
+    .btn-create-import {
+      width: 100%; margin-top: 0.75rem; padding: 0.85rem; background: white; color: #0f3460;
+      border: 2px solid #0f3460; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      i { margin-right: 0.4rem; }
+    }
+
     .btn-small {
       padding: 0.6rem 1rem; background: #0f3460; color: white;
       border: none; border-radius: 8px; font-size: 0.85rem; cursor: pointer;
@@ -680,6 +689,11 @@ export class SetDetailComponent implements OnInit {
     this.api.getSet(id).subscribe({
       next: (s) => {
         this.set = s;
+        // Na "Aanmaken en woordenlijst importeren" meteen het importvenster openen.
+        if (s.isOwner && this.route.snapshot.queryParamMap.get('import')) {
+          this.showImportModal = true;
+          this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+        }
         this.api.getSetWords(id).subscribe(words => {
           this.setWords = words;
           this.applyFilter();
@@ -689,8 +703,12 @@ export class SetDetailComponent implements OnInit {
     });
   }
 
-  createSet() {
+  createSet(thenImport = false) {
     this.error = '';
+    if (!this.newSet.name.trim()) {
+      this.error = 'Geef de set een naam.';
+      return;
+    }
     this.api.createSet({
       name: this.newSet.name,
       language: this.newSet.language,
@@ -698,7 +716,7 @@ export class SetDetailComponent implements OnInit {
       fromNumber: this.newSet.fromNumber ?? undefined,
       toNumber: this.newSet.toNumber ?? undefined
     }).subscribe({
-      next: (s) => this.router.navigate(['/sets', s.id]),
+      next: (s) => this.router.navigate(['/sets', s.id], thenImport ? { queryParams: { import: 1 } } : {}),
       error: (err) => this.error = err.error || 'Fout bij aanmaken.'
     });
   }
