@@ -97,7 +97,7 @@ Lexica.Shared         → DTOs (gedeeld tussen lagen)
 - `SessionsController` — Studiesessies met SM-2 spaced repetition
 - `StatsController` — Statistieken, weekoverzicht, achievements
 - `ImportController` — Excel import met preview en bevestiging
-- `SetsController` — CRUD voor sets, public set discovery, subscriptions, en **fork/split/merge/move-words** (delegeert naar `SetForkService`)
+- `SetsController` — CRUD voor sets, public set discovery, subscriptions, **fork/split/merge/move-words** (delegeert naar `SetForkService`) en **import van een woordenlijst in een set** (`POST {id}/import/preview|confirm`, hergebruikt `ExcelImportService`)
 
 **Domeinmodel** (`src/Lexica.Core/Entities/`):
 - `ApplicationUser` (extends IdentityUser\<Guid>) — XP, Level, Streak, SessionSize

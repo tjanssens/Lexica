@@ -5,12 +5,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, SetDto, WordDto } from '../../core/services/api.service';
 import { WordItemComponent } from '../../shared/components/word-item.component';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { SetImportModalComponent } from './set-import-modal.component';
 import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/language';
 
 @Component({
   selector: 'app-set-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent],
+  imports: [CommonModule, FormsModule, RouterLink, WordItemComponent, LoadingComponent, SetImportModalComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -33,7 +34,8 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
           </h1>
         }
         @if (!isNew && set && set.isOwner && !editingName) {
-          <button class="header-btn" (click)="showAddModal = true"><i class="fa-solid fa-plus"></i></button>
+          <button class="header-btn" (click)="showAddModal = true" title="Woorden toevoegen"><i class="fa-solid fa-plus"></i></button>
+          <button class="header-btn" (click)="openImportModal()" title="Woordenlijst importeren"><i class="fa-solid fa-file-import"></i></button>
           <button class="header-btn delete" (click)="deleteSet()"><i class="fa-solid fa-trash"></i></button>
         }
       </header>
@@ -153,9 +155,17 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
                   </div>
                   @if (addError) { <div class="error">{{ addError }}</div> }
                   <button class="btn-submit" (click)="addByRange()">Toevoegen</button>
+                  <button type="button" class="link-btn" (click)="showAddModal = false; openImportModal()">
+                    <i class="fa-solid fa-file-import"></i> Of importeer een woordenlijst (Excel)
+                  </button>
                 </div>
               </div>
             </div>
+          }
+
+          @if (showImportModal) {
+            <app-set-import-modal [setId]="set.id" [languageLabel]="langLabel(set.language)"
+                                  (closed)="onImportClosed($event)"></app-set-import-modal>
           }
 
           <div class="list-header">
@@ -489,6 +499,11 @@ import { LANGUAGES, languageIcon, languageLabel } from '../../shared/utils/langu
       &:hover { background: #1a1a2e; }
     }
 
+    .link-btn {
+      display: block; width: 100%; margin-top: 0.75rem; background: none; border: none;
+      color: #0f3460; font-size: 0.85rem; cursor: pointer; text-decoration: underline;
+    }
+
     h3 { font-size: 1rem; color: #333; margin: 0; }
 
     .list-header {
@@ -630,6 +645,7 @@ export class SetDetailComponent implements OnInit {
   candidateSets: SetDto[] = [];
   bulkBusy = false;
   bulkError = '';
+  showImportModal = false;
   editingName = false;
   nameDraft = '';
   languages = LANGUAGES;
@@ -702,6 +718,15 @@ export class SetDetailComponent implements OnInit {
       },
       error: () => this.addError = 'Fout bij toevoegen.'
     });
+  }
+
+  openImportModal() {
+    this.showImportModal = true;
+  }
+
+  onImportClosed(imported: boolean) {
+    this.showImportModal = false;
+    if (imported && this.set) this.loadSet(this.set.id);
   }
 
   toggleFilter(filter: 'mastered' | 'inprogress' | 'notstarted') {

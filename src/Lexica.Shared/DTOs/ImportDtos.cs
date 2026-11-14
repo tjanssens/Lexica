@@ -16,7 +16,8 @@ public record ImportPreviewRow(
     string? Group,
     bool IsDuplicate,
     bool NumberChanged,
-    List<string> Errors
+    List<string> Errors,
+    bool AlreadyInSet = false
 );
 
 public record ImportPreviewResponse(
@@ -25,7 +26,8 @@ public record ImportPreviewResponse(
     int DuplicateCount,
     int ErrorCount,
     int RenumberedCount,
-    string SessionId
+    string SessionId,
+    int ToAddToSetCount = 0
 );
 
 public record ImportConfirmRequest(
@@ -37,5 +39,6 @@ public record ImportResultResponse(
     int Imported,
     int Updated,
     int Skipped,
-    int Errors
+    int Errors,
+    int AddedToSet = 0
 );
