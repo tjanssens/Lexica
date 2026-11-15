@@ -312,4 +312,30 @@ public class SessionsControllerTests
         Assert.Contains(oud.Id, ids);
         Assert.DoesNotContain(recent.Id, ids);
     }
+
+    [Fact]
+    public async Task GetNextSession_WoordDatFoutBeantwoordIsGeldtNietMeerAlsNieuw()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.Latin };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var nooitGezien = AddWord(db, user.Id, set, 1, "novum");
+        var foutBeantwoord = AddWord(db, user.Id, set, 2, "errans");
+        AddReview(db, user.Id, foutBeantwoord.Id, ReviewResult.Unknown);
+        // SM-2 zet Repetitions terug op 0 na een fout antwoord, maar het woord is wel al geoefend.
+        AddProgress(db, user.Id, foutBeantwoord.Id, easiness: 2.3, repetitions: 0, timesReviewed: 1,
+            dueDate: DateTime.UtcNow.Date.AddDays(1), lastReviewed: DateTime.UtcNow);
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "TargetToNl", 20));
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var words = Assert.IsType<List<SessionWordDto>>(ok.Value);
+        Assert.True(words.Single(w => w.WordId == nooitGezien.Id).IsNew);
+        Assert.False(words.Single(w => w.WordId == foutBeantwoord.Id).IsNew);
+    }
 }
