@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CelebrationTheme, celebrationTheme } from './celebration-themes';
+import { ParisSceneComponent } from './paris-scene.component';
 
 interface Firework {
   x: number;
@@ -19,48 +20,38 @@ const RAYS = Array.from({ length: 12 }, (_, i) => {
 });
 
 /**
- * Eindanimatie van een sessie: een lijntekening die zichzelf tekent (per taal,
- * bv. de Eiffeltoren voor Frans), daarna drie vuurwerkpijlen en de titel.
+ * Eindanimatie van een sessie. Frans: Parijs bij nacht (ParisSceneComponent).
+ * Andere talen: een ster die zichzelf tekent met drie vuurwerkpijlen. Daarna de titel.
  * Speelt één keer bij het tonen van het eindscherm.
  */
 @Component({
   selector: 'app-session-finale',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ParisSceneComponent],
   template: `
-    <div class="finale">
-      <svg class="sky" viewBox="0 0 240 170" role="img" [attr.aria-label]="theme.finaleTitle">
-        @switch (theme.finaleArt) {
-          @case ('eiffel') {
-            <g class="art" fill="none" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <path class="d d1" pathLength="1" d="M80 160 Q105 110 115 30" />
-              <path class="d d1" pathLength="1" d="M160 160 Q135 110 125 30" />
-              <path class="d d2" pathLength="1" d="M115 30 L125 30 M120 30 L120 10" />
-              <path class="d d3" pathLength="1" d="M88 127 L152 127" />
-              <path class="d d3" pathLength="1" d="M101 89 L139 89" />
-              <path class="d d4" pathLength="1" d="M87 144 Q120 112 153 144" />
-            </g>
-          }
-          @default {
-            <g class="art" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-              <path class="d d-star" pathLength="1"
-                d="M120 25 L134.7 64.8 L177.1 66.5 L143.8 92.7 L155.3 133.5 L120 110 L84.7 133.5 L96.2 92.7 L62.9 66.5 L105.3 64.8 Z" />
-            </g>
-          }
-        }
-
-        @for (f of fireworks; track $index) {
-          <g [attr.transform]="'translate(' + f.x + ' ' + f.y + ')'">
-            <g class="firework" [style.animation-delay.ms]="f.delay"
-              [attr.stroke]="f.color" [attr.fill]="f.color" stroke-width="2.5" stroke-linecap="round">
-              @for (r of rays; track $index) {
-                <line [attr.x1]="r.x1" [attr.y1]="r.y1" [attr.x2]="r.x2" [attr.y2]="r.y2" />
-                <circle [attr.cx]="r.dx" [attr.cy]="r.dy" r="1.6" stroke="none" />
-              }
-            </g>
+    <div class="finale" [class.paris]="theme.finaleArt === 'eiffel'">
+      @if (theme.finaleArt === 'eiffel') {
+        <app-paris-scene role="img" [attr.aria-label]="theme.finaleTitle"></app-paris-scene>
+      } @else {
+        <svg class="sky" viewBox="0 0 240 170" role="img" [attr.aria-label]="theme.finaleTitle">
+          <g class="art" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+            <path class="d d-star" pathLength="1"
+              d="M120 25 L134.7 64.8 L177.1 66.5 L143.8 92.7 L155.3 133.5 L120 110 L84.7 133.5 L96.2 92.7 L62.9 66.5 L105.3 64.8 Z" />
           </g>
-        }
-      </svg>
+
+          @for (f of fireworks; track $index) {
+            <g [attr.transform]="'translate(' + f.x + ' ' + f.y + ')'">
+              <g class="firework" [style.animation-delay.ms]="f.delay"
+                [attr.stroke]="f.color" [attr.fill]="f.color" stroke-width="2.5" stroke-linecap="round">
+                @for (r of rays; track $index) {
+                  <line [attr.x1]="r.x1" [attr.y1]="r.y1" [attr.x2]="r.x2" [attr.y2]="r.y2" />
+                  <circle [attr.cx]="r.dx" [attr.cy]="r.dy" r="1.6" stroke="none" />
+                }
+              </g>
+            </g>
+          }
+        </svg>
+      }
 
       <div class="title">{{ theme.finaleTitle }}</div>
       @if (theme.flagColors) {
@@ -75,9 +66,10 @@ const RAYS = Array.from({ length: 12 }, (_, i) => {
   styles: [`
     .finale {
       background: radial-gradient(ellipse at 50% 30%, #24345e 0%, #1a1a2e 70%);
-      border-radius: 16px;
+      /* Loopt tot de randen van de kaart, als een banner bovenaan */
+      border-radius: 20px 20px 0 0;
       padding: 0.75rem 1rem 1.1rem;
-      margin-bottom: 1.25rem;
+      margin: -2.5rem -2.5rem 1.25rem;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -85,6 +77,14 @@ const RAYS = Array.from({ length: 12 }, (_, i) => {
     }
 
     .sky { width: 100%; max-width: 280px; height: auto; display: block; }
+
+    .finale.paris {
+      background: #070b1f;
+      padding: 0 0 1.1rem;
+      app-paris-scene { width: 100%; }
+      .title { margin-top: -0.4rem; animation-delay: 3s; }
+      .flag { animation-delay: 3.15s; }
+    }
 
     .d {
       stroke-dasharray: 1;
