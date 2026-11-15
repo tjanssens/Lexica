@@ -113,6 +113,27 @@ public class SessionsControllerTests
     }
 
     [Fact]
+    public async Task GetNextSession_GeeftTaalVanHetWoordMee()
+    {
+        using var db = NewDb();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "user" };
+        var set = new Set { Id = Guid.NewGuid(), UserId = user.Id, Name = "Set", Language = Language.French };
+        db.Users.Add(user);
+        db.Sets.Add(set);
+
+        var word = AddWord(db, user.Id, set, 1, "manger");
+        word.Language = Language.French;
+        await db.SaveChangesAsync();
+
+        var controller = NewController(db, user.Id);
+        var result = await controller.GetNextSession(new SessionRequest([set.Id], "NlToTarget", 20));
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var words = Assert.IsType<List<SessionWordDto>>(ok.Value);
+        Assert.Equal("French", Assert.Single(words).Language);
+    }
+
+    [Fact]
     public async Task GetNextSession_ZonderFilter_BevatOokOoitJuisteWoorden()
     {
         using var db = NewDb();

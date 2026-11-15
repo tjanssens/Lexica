@@ -13,7 +13,9 @@ public record SessionWordDto(
     string Translation,
     string? PartOfSpeech,
     string? Notes,
-    bool IsNew
+    bool IsNew,
+    // Taal van het woord (bv. "French"); bepaalt de kaartstijl tijdens het studeren.
+    string? Language = null
 );
 
 public record ReviewRequest(
