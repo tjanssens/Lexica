@@ -1,10 +1,12 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { CorrectBurstComponent } from '../../shared/components/celebrations/correct-burst.component';
+import { SessionFinaleComponent } from '../../shared/components/celebrations/session-finale.component';
 import { CardTheme, getCardTheme, plaqueFontSize } from './card-themes';
 
 interface SessionWord {
@@ -20,11 +22,12 @@ interface SessionWord {
 @Component({
   selector: 'app-session-play',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, LoadingComponent],
+  imports: [CommonModule, RouterLink, FormsModule, LoadingComponent, CorrectBurstComponent, SessionFinaleComponent],
   template: `
     @if (completed) {
       <div class="completed-screen">
         <div class="completed-card">
+          <app-session-finale [language]="language ?? currentWord?.language ?? null"></app-session-finale>
           <h1>Sessie voltooid!</h1>
           <div class="stats-grid">
             <div class="stat">
@@ -67,6 +70,9 @@ interface SessionWord {
           (touchstart)="onTouchStart($event)"
           (touchend)="onTouchEnd($event)"
           (click)="flipCard()">
+
+          <!-- Feedback bij een juist antwoord, net boven de kaart zodat het volgende woord zichtbaar blijft -->
+          <app-correct-burst class="correct-burst" [language]="language ?? currentWord.language ?? null"></app-correct-burst>
 
           <div class="flashcard" [class.flipped]="flipped"
             [ngClass]="theme ? 'theme-' + theme.id : ''"
@@ -182,7 +188,11 @@ interface SessionWord {
       justify-content: center;
       padding: 1.5rem;
       perspective: 1000px;
+      position: relative;
     }
+
+    /* Bovenrand van de kaart (300px hoog, verticaal gecentreerd) */
+    .correct-burst { top: calc(50% - 150px); }
 
     .flashcard {
       width: 100%;
@@ -355,7 +365,7 @@ interface SessionWord {
       max-width: 400px;
       text-align: center;
 
-      h1 { font-size: 1.5rem; color: #155724; margin: 0 0 1.5rem; }
+      h1 { font-size: 1.25rem; color: #155724; margin: 0 0 1.25rem; }
     }
 
     .stats-grid {
@@ -519,7 +529,11 @@ export class SessionPlayComponent implements OnInit {
   swipeClass = '';
   direction = 'NlToTarget';
   mode: 'quick' | 'intensive' = 'intensive';
+  /** Taal van de gekozen sets (null bij gemengde talen) — bepaalt de animaties. */
+  language: string | null = null;
   completed = false;
+
+  @ViewChild(CorrectBurstComponent) correctBurst?: CorrectBurstComponent;
 
   // Stats
   totalWords = 0;
@@ -554,6 +568,7 @@ export class SessionPlayComponent implements OnInit {
       this.reviewed = new Set<string>(paused.reviewed);
       this.direction = paused.direction;
       this.mode = paused.mode ?? 'intensive';
+      this.language = paused.language ?? null;
       this.totalWords = paused.totalWords;
       this.knownCount = paused.knownCount;
       this.unknownCount = paused.unknownCount;
@@ -574,6 +589,7 @@ export class SessionPlayComponent implements OnInit {
     const config = JSON.parse(configStr);
     this.direction = config.direction;
     this.mode = config.mode ?? 'intensive';
+    this.language = config.language ?? null;
 
     this.http.post<SessionWord[]>(`${this.baseUrl}/next`, {
       setIds: config.setIds,
@@ -680,6 +696,8 @@ export class SessionPlayComponent implements OnInit {
       this.reviewed.add(wordId);
     }
 
+    if (result !== 'Unknown') this.correctBurst?.play();
+
     // Animate and show next
     this.swipeClass = result === 'Unknown' ? 'left' : result === 'Easy' ? 'up' : 'right';
     setTimeout(() => {
@@ -710,6 +728,7 @@ export class SessionPlayComponent implements OnInit {
       reviewed: Array.from(this.reviewed),
       direction: this.direction,
       mode: this.mode,
+      language: this.language,
       totalWords: this.totalWords,
       knownCount: this.knownCount,
       unknownCount: this.unknownCount,

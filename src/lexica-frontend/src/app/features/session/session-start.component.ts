@@ -275,9 +275,14 @@ export class SessionStartComponent implements OnInit {
       onlyNeverCorrect: this.onlyNeverCorrect
     }));
 
+    // Taal van de sessie (voor de animaties): alleen als alle gekozen sets dezelfde taal hebben
+    const languages = new Set(this.sets.filter(s => this.selectedSetIds.has(s.id)).map(s => s.language));
+    const language = languages.size === 1 ? Array.from(languages)[0] : null;
+
     // Store session config and navigate to play
     sessionStorage.setItem('session_config', JSON.stringify({
       setIds,
+      language,
       direction: this.direction,
       sessionSize: this.sessionSize,
       mode: this.mode,
