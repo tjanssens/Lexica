@@ -81,7 +81,8 @@ public class SessionsController(AppDbContext db) : ControllerBase
             wp.Word.Id, wp.Word.Term, wp.Word.Translation,
             wp.Word.PartOfSpeech,
             wp.Progress?.Notes,
-            wp.Progress == null || wp.Progress.Repetitions == 0
+            wp.Progress == null || wp.Progress.Repetitions == 0,
+            wp.Word.Language.ToString()
         )).ToList();
 
         return Ok(result);

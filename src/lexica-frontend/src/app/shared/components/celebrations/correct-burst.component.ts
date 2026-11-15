@@ -63,7 +63,7 @@ const BURST_MS = 1100;
 
     .burst {
       position: absolute;
-      bottom: 12px;
+      bottom: 26px;
       left: 50%;
       width: 0;
       display: flex;
