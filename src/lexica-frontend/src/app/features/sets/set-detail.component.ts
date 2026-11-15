@@ -759,8 +759,8 @@ export class SetDetailComponent implements OnInit {
         const isMastered = w.repetitions > 5 && w.easiness > 2.3 && w.interval > 21;
         switch (this.wordFilter) {
           case 'mastered': return isMastered;
-          case 'inprogress': return w.repetitions > 0 && !isMastered;
-          case 'notstarted': return w.repetitions === 0;
+          case 'inprogress': return w.timesReviewed > 0 && !isMastered;
+          case 'notstarted': return w.timesReviewed === 0;
           default: return true;
         }
       });

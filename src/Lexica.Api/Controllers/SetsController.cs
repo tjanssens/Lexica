@@ -35,7 +35,7 @@ public class SetsController(AppDbContext db, SetForkService forkService, ExcelIm
                 s.SetWords.Count(sw => sw.Word.UserProgress
                     .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
                 s.SetWords.Count(sw => sw.Word.UserProgress
-                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                    .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                         !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 s.CreatedAt,
                 s.IsPublic,
@@ -60,7 +60,7 @@ public class SetsController(AppDbContext db, SetForkService forkService, ExcelIm
                 s.SetWords.Count(sw => sw.Word.UserProgress
                     .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
                 s.SetWords.Count(sw => sw.Word.UserProgress
-                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                    .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                         !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 s.CreatedAt,
                 s.IsPublic,
@@ -138,7 +138,7 @@ public class SetsController(AppDbContext db, SetForkService forkService, ExcelIm
             await db.SetWords.CountAsync(sw => sw.SetId == id && sw.Word.UserProgress
                 .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
             await db.SetWords.CountAsync(sw => sw.SetId == id && sw.Word.UserProgress
-                .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                     !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
             set.CreatedAt, set.IsPublic, set.Description, true, null, null, subscriberCount));
     }

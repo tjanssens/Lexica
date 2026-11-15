@@ -31,7 +31,7 @@ public class GroupsController(AppDbContext db) : ControllerBase
                 g.GroupWords.Count(gw => gw.Word.UserProgress
                     .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
                 g.GroupWords.Count(gw => gw.Word.UserProgress
-                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                    .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                         !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 g.CreatedAt))
             .ToListAsync();
@@ -50,7 +50,7 @@ public class GroupsController(AppDbContext db) : ControllerBase
                 g.GroupWords.Count(gw => gw.Word.UserProgress
                     .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
                 g.GroupWords.Count(gw => gw.Word.UserProgress
-                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                    .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                         !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 g.CreatedAt))
             .FirstOrDefaultAsync();
@@ -110,7 +110,7 @@ public class GroupsController(AppDbContext db) : ControllerBase
                 g.GroupWords.Count(gw => gw.Word.UserProgress
                     .Any(p => p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21)),
                 g.GroupWords.Count(gw => gw.Word.UserProgress
-                    .Any(p => p.UserId == UserId && p.Repetitions > 0 &&
+                    .Any(p => p.UserId == UserId && p.TimesReviewed > 0 &&
                         !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21))),
                 g.CreatedAt))
             .FirstOrDefaultAsync();

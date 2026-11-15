@@ -26,7 +26,7 @@ public class StatsController(AppDbContext db) : ControllerBase
         var masteredWords = await db.UserWordProgress.CountAsync(p =>
             p.UserId == UserId && p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21);
         var inProgressWords = await db.UserWordProgress.CountAsync(p =>
-            p.UserId == UserId && p.Repetitions > 0 && !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21));
+            p.UserId == UserId && p.TimesReviewed > 0 && !(p.Repetitions > 5 && p.Easiness > 2.3 && p.Interval > 21));
         var dueToday = await db.UserWordProgress.CountAsync(p =>
             p.UserId == UserId && p.DueDate <= today);
 

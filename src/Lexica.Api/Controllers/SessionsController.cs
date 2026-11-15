@@ -81,7 +81,8 @@ public class SessionsController(AppDbContext db) : ControllerBase
             wp.Word.Id, wp.Word.Term, wp.Word.Translation,
             wp.Word.PartOfSpeech,
             wp.Progress?.Notes,
-            wp.Progress == null || wp.Progress.Repetitions == 0,
+            // "Nieuw" = nog nooit geoefend. Niet op Repetitions: die valt bij een fout antwoord terug op 0.
+            wp.Progress == null || wp.Progress.TimesReviewed == 0,
             wp.Word.Language.ToString()
         )).ToList();
 

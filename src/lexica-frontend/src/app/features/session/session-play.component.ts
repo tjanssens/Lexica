@@ -682,8 +682,9 @@ export class SessionPlayComponent implements OnInit {
     if (result === 'Unknown') {
       this.unknownCount++;
       if (this.mode === 'intensive') {
-        // Put back in stack so it returns later in this session
-        this.stack.push(this.currentWord);
+        // Put back in stack so it returns later in this session.
+        // It has been seen now, so it is no longer "Nieuw" when it comes back.
+        this.stack.push({ ...this.currentWord, isNew: false });
       } else {
         // Quick mode: one pass through everything, even wrong answers
         this.reviewed.add(wordId);
