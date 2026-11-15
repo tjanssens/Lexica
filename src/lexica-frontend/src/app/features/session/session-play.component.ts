@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { LoadingComponent } from '../../shared/components/loading.component';
+import { CardTheme, getCardTheme, plaqueFontSize } from './card-themes';
 
 interface SessionWord {
   wordId: string;
@@ -13,6 +14,7 @@ interface SessionWord {
   partOfSpeech?: string;
   notes?: string;
   isNew: boolean;
+  language?: string;
 }
 
 @Component({
@@ -67,23 +69,30 @@ interface SessionWord {
           (click)="flipCard()">
 
           <div class="flashcard" [class.flipped]="flipped"
+            [ngClass]="theme ? 'theme-' + theme.id : ''"
             [class.swipe-left]="swipeClass === 'left'"
             [class.swipe-right]="swipeClass === 'right'"
             [class.swipe-up]="swipeClass === 'up'">
 
             <div class="card-front">
+              @if (theme) {
+                <span class="plaque-cap">{{ frontCode }}</span>
+              }
               <div class="card-content">
                 @if (currentWord.isNew) {
                   <span class="new-badge">Nieuw</span>
                 }
-                <span class="card-text">{{ frontText }}</span>
+                <span class="card-text" [style.font-size]="theme ? textSize(frontText) : null">{{ frontText }}</span>
                 <span class="tap-hint">Tik om te draaien</span>
               </div>
             </div>
 
             <div class="card-back">
+              @if (theme) {
+                <span class="plaque-cap">{{ backCode }}</span>
+              }
               <div class="card-content">
-                <span class="card-text">{{ backText }}</span>
+                <span class="card-text" [style.font-size]="theme ? textSize(backText) : null">{{ backText }}</span>
                 @if (currentWord.partOfSpeech) {
                   <span class="card-meta">{{ currentWord.partOfSpeech }}</span>
                 }
@@ -409,6 +418,93 @@ interface SessionWord {
       background: #1a1a2e;
     }
 
+    /* ── Thema "plaque": Parijs straatnaambord (Frans) ───────────────────── */
+    .flashcard-container { container-type: inline-size; }
+
+    .flashcard.theme-plaque {
+      .card-front, .card-back {
+        --plaque-blue: #17357f;
+        --plaque-blue-deep: #0f2766;
+        --plaque-green: #1d6b40;
+        --plaque-line: #f3f1e8;
+        background:
+          radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,0.10), transparent 55%),
+          linear-gradient(160deg, var(--plaque-blue), var(--plaque-blue-deep));
+        border: 7px solid var(--plaque-green);
+        border-radius: 14px;
+        /* witte binnenlijn zoals op een echt emaillen bord */
+        box-shadow:
+          inset 0 0 0 6px var(--plaque-blue),
+          inset 0 0 0 8px var(--plaque-line),
+          0 10px 28px rgba(0,0,0,0.45);
+        box-sizing: border-box;
+      }
+
+      .card-content {
+        padding: 1.75rem 1.5rem;
+        max-width: 100%;
+        box-sizing: border-box;
+        gap: 0.6rem;
+      }
+
+      .card-text {
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+        hyphens: manual;
+        text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+      }
+
+      .card-meta {
+        order: -1;
+        color: rgba(255,255,255,0.78);
+        font-style: normal;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.32em;
+      }
+
+      .card-notes { color: rgba(255,255,255,0.72); margin-top: 0.25rem; }
+      .tap-hint { color: rgba(255,255,255,0.5); letter-spacing: 0.05em; }
+      .new-badge { background: #f5c542; color: #0f2766; }
+
+      .note-icon-btn {
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+        bottom: 16px;
+        right: 16px;
+        &:hover { background: rgba(255,255,255,0.26); color: #fff; }
+      }
+    }
+
+    /* Halfronde "kap" bovenaan, waar op een echt bord het arrondissement staat */
+    .plaque-cap {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      height: 30px;
+      box-sizing: border-box;
+      border: 7px solid #1d6b40;
+      border-bottom: none;
+      border-radius: 34px 34px 0 0;
+      background: #17357f;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 1px;
+      line-height: 1;
+    }
+
     @keyframes slideLeft { 0% { transform: translateX(0) rotateY(180deg); } 100% { transform: translateX(-100px) rotateY(180deg); opacity: 0; } }
     @keyframes slideRight { 0% { transform: translateX(0) rotateY(180deg); } 100% { transform: translateX(100px) rotateY(180deg); opacity: 0; } }
     @keyframes slideUp { 0% { transform: translateY(0) rotateY(180deg); } 100% { transform: translateY(-100px) rotateY(180deg); opacity: 0; } }
@@ -498,6 +594,27 @@ export class SessionPlayComponent implements OnInit {
       },
       error: () => this.router.navigate(['/session'])
     });
+  }
+
+  /** Taalspecifieke kaartstijl voor het huidige woord, of null voor de standaardkaart. */
+  get theme(): CardTheme | null {
+    return getCardTheme(this.currentWord?.language);
+  }
+
+  get frontCode(): string {
+    const t = this.theme;
+    if (!t) return '';
+    return this.direction === 'NlToTarget' ? t.nativeCode : t.targetCode;
+  }
+
+  get backCode(): string {
+    const t = this.theme;
+    if (!t) return '';
+    return this.direction === 'NlToTarget' ? t.targetCode : t.nativeCode;
+  }
+
+  textSize(text: string): string {
+    return plaqueFontSize(text);
   }
 
   get frontText(): string {
