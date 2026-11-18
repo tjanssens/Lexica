@@ -31,7 +31,7 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
     public Task<ImportPreviewResponse> Preview(Stream fileStream, Guid userId, Guid? targetSetId = null)
     {
         var rawRows = new List<RawRow>();
-        using (var workbook = new XLWorkbook(fileStream))
+        using (var workbook = OpenWorkbook(fileStream))
         {
             var worksheet = workbook.Worksheets.First();
             var headerRow = worksheet.Row(1);
@@ -68,6 +68,20 @@ public class ExcelImportService(AppDbContext db, IMemoryCache cache)
 
     // Preview voor een lijst (term, vertaling)-paren zonder Excel, bv. herkend op een foto.
     // In een set valt de taal terug op die van de set; zonder set geeft de gebruiker de taal mee.
+    // Een kapot of niet-ondersteund bestand geeft een duidelijke melding (400) in plaats van een crash.
+    private static XLWorkbook OpenWorkbook(Stream fileStream)
+    {
+        try
+        {
+            return new XLWorkbook(fileStream);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException(
+                "Dit Excel-bestand kan niet gelezen worden. Open het in Excel, sla het opnieuw op als .xlsx en probeer opnieuw.", ex);
+        }
+    }
+
     public Task<ImportPreviewResponse> PreviewRows(IEnumerable<ImportRowInput> input, Guid userId, Guid? targetSetId, Language? language = null)
     {
         var languageStr = targetSetId.HasValue ? null : language?.ToString();
