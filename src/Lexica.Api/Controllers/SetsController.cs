@@ -245,6 +245,7 @@ public class SetsController(AppDbContext db, SetForkService forkService, ExcelIm
             return Ok(await importService.Preview(stream, UserId, id));
         }
         catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidDataException ex) { return BadRequest(ex.Message); }
     }
 
     // Zelfde preview als hierboven, maar voor (term, vertaling)-paren die de app zelf aanlevert:

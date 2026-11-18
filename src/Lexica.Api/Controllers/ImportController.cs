@@ -25,9 +25,12 @@ public class ImportController(ExcelImportService importService, ExcelExportServi
         if (extension != ".xlsx" && extension != ".xls")
             return BadRequest("Alleen Excel-bestanden (.xlsx, .xls) zijn toegestaan.");
 
-        using var stream = file.OpenReadStream();
-        var result = await importService.Preview(stream, UserId);
-        return Ok(result);
+        try
+        {
+            using var stream = file.OpenReadStream();
+            return Ok(await importService.Preview(stream, UserId));
+        }
+        catch (InvalidDataException ex) { return BadRequest(ex.Message); }
     }
 
     // Foto van een woordenlijst -> (term, vertaling)-paren via Claude, voor de algemene woordenlijst
